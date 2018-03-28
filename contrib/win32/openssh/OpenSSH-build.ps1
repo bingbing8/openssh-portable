@@ -24,18 +24,18 @@ try
     }
     Write-Verbose "Start-OpenSSHBuild -NativeHostArch $NativeHostArch -Configuration $Configuration -NoOpenSSL:$NoOpenSSL -Onecore:$OneCore -Verbose " -Verbose
     Start-OpenSSHBuild -NativeHostArch $NativeHostArch -Configuration $Configuration -NoOpenSSL:$NoOpenSSL -Onecore:$OneCore -Verbose
-    Write-Verbose "Start-OpenSSHPackage -NativeHostArch $NativeHostArch -Configuration $Configuration -NoOpenSSL:$NoOpenSSL -Onecore:$OneCore -DestinationPath $repolocation\$Bucket_symbols" -verbose
-    Start-OpenSSHPackage -NativeHostArch $NativeHostArch -Configuration $Configuration -NoOpenSSL:$NoOpenSSL -Onecore:$OneCore -DestinationPath "$repolocation\$Bucket_symbols"
+    Write-Verbose "Start-OpenSSHPackage -NativeHostArch $NativeHostArch -Configuration $Configuration -NoOpenSSL:$NoOpenSSL -Onecore:$OneCore -DestinationPath $repolocation\$($Bucket)_symbols" -verbose
+    Start-OpenSSHPackage -NativeHostArch $NativeHostArch -Configuration $Configuration -NoOpenSSL:$NoOpenSSL -Onecore:$OneCore -DestinationPath "$repolocation\$($Bucket)_symbols"
     if(-not (Test-Path $destination))
     {
         New-Item -Path $destination -ItemType Directory -Force -ErrorAction Stop| Out-Null
     }
     #copy the build log
     $buildLog = Get-BuildLogFile -NativeHostArch $NativeHostArch -Configuration $Configuration -root $repolocation
-    Write-Verbose "Copying $buildLog to $repolocation\$Bucket_symbols" -verbose
-    Copy-Item -Path $buildLog -Destination "$Bucket_symbols\" -Force -ErrorAction SilentlyContinue    
+    Write-Verbose "Copying $buildLog to $repolocation\$($Bucket)_symbols" -verbose
+    Copy-Item -Path $buildLog -Destination "$($Bucket)_symbols\" -Force -ErrorAction SilentlyContinue    
 
-    Compress-Archive "$Bucket_symbols" -DestinationPath "$destination\$repolocation\$Bucket_symbols"
+    Compress-Archive "$Bucket_symbols" -DestinationPath "$destination\$repolocation\$($Bucket)_symbols"
 }
 finally
 {
