@@ -8,8 +8,8 @@
         "-m",
         "3968m"
       ],
-      "DockerFile": ".\\contrib\\win32\\openssh\\images\\DockerFile",
-      "AdditionalContextFiles": [ ".\\contrib\\win32\\openssh\\images\\OpenSSH-build.ps1" ],
+      "DockerFile": ".\\contrib\\win32\\openssh\\DockerFile",
+      "AdditionalContextFiles": [ ".\\contrib\\win32\\openssh\\OpenSSH-build.ps1" ],
       "DockerImageName": "di-openssh-x64",
       "BinaryBucket": "OpenSSH-Win64"
     },
@@ -21,8 +21,8 @@
         "-m",
         "3968m"
       ],
-      "DockerFile": ".\\contrib\\win32\\openssh\\images\\DockerFile",
-      "AdditionalContextFiles": [ ".\\contrib\\win32\\openssh\\images\\OpenSSH-build.ps1" ],
+      "DockerFile": ".\\contrib\\win32\\openssh\\DockerFile",
+      "AdditionalContextFiles": [ ".\\contrib\\win32\\openssh\\OpenSSH-build.ps1" ],
       "DockerImageName": "di-openssh-x86",
       "BinaryBucket": "OpenSSH-Win32"
     },
@@ -34,8 +34,8 @@
         "-m",
         "3968m"
       ],
-      "DockerFile": ".\\contrib\\win32\\openssh\\images\\DockerFile",
-      "AdditionalContextFiles": [ ".\\contrib\\win32\\openssh\\images\\OpenSSH-build.ps1" ],
+      "DockerFile": ".\\contrib\\win32\\openssh\\DockerFile",
+      "AdditionalContextFiles": [ ".\\contrib\\win32\\openssh\\OpenSSH-build.ps1" ],
       "DockerImageName": "di-openssh-arm",
       "BinaryBucket": "OpenSSH-ARM"
     },
@@ -47,8 +47,8 @@
         "-m",
         "3968m"
       ],
-      "DockerFile": ".\\contrib\\win32\\openssh\\images\\DockerFile",
-      "AdditionalContextFiles": [ ".\\contrib\\win32\\openssh\\images\\OpenSSH-build.ps1" ],
+      "DockerFile": ".\\contrib\\win32\\openssh\\DockerFile",
+      "AdditionalContextFiles": [ ".\\contrib\\win32\\openssh\\OpenSSH-build.ps1" ],
       "DockerImageName": "di-openssh-arm64",
       "BinaryBucket": "OpenSSH-ARM64"
     },
@@ -60,8 +60,8 @@
         "-m",
         "3968m"
       ],
-      "DockerFile": ".\\contrib\\win32\\openssh\\images\\DockerFile",
-      "AdditionalContextFiles": [ ".\\contrib\\win32\\openssh\\images\\OpenSSH-build.ps1" ],
+      "DockerFile": ".\\contrib\\win32\\openssh\\DockerFile",
+      "AdditionalContextFiles": [ ".\\contrib\\win32\\openssh\\OpenSSH-build.ps1" ],
       "DockerImageName": "di-openssh-x64",
       "BinaryBucket": "OpenSSH-Win64"
     },
@@ -73,8 +73,8 @@
         "-m",
         "3968m"
       ],
-      "DockerFile": ".\\contrib\\win32\\openssh\\images\\DockerFile",
-      "AdditionalContextFiles": [ ".\\contrib\\win32\\openssh\\images\\OpenSSH-build.ps1" ],
+      "DockerFile": ".\\contrib\\win32\\openssh\\DockerFile",
+      "AdditionalContextFiles": [ ".\\contrib\\win32\\openssh\\OpenSSH-build.ps1" ],
       "DockerImageName": "di-openssh-x86",
       "BinaryBucket": "OpenSSH-Win32"
     },
@@ -86,8 +86,8 @@
         "-m",
         "3968m"
       ],
-      "DockerFile": ".\\contrib\\win32\\openssh\\images\\DockerFile",
-      "AdditionalContextFiles": [ ".\\contrib\\win32\\openssh\\images\\OpenSSH-build.ps1" ],
+      "DockerFile": ".\\contrib\\win32\\openssh\\DockerFile",
+      "AdditionalContextFiles": [ ".\\contrib\\win32\\openssh\\OpenSSH-build.ps1" ],
       "DockerImageName": "di-openssh-arm",
       "BinaryBucket": "OpenSSH-Arm"
     },
@@ -99,8 +99,8 @@
         "-m",
         "3968m"
       ],
-      "DockerFile": ".\\contrib\\win32\\openssh\\images\\DockerFile",
-      "AdditionalContextFiles": [ ".\\contrib\\win32\\openssh\\images\\OpenSSH-build.ps1" ],
+      "DockerFile": ".\\contrib\\win32\\openssh\\DockerFile",
+      "AdditionalContextFiles": [ ".\\contrib\\win32\\openssh\\OpenSSH-build.ps1" ],
       "DockerImageName": "di-openssh-arm64",
       "BinaryBucket": "OpenSSH-Arm64"
     },
@@ -112,8 +112,8 @@
         "-m",
         "3968m"
       ],
-      "DockerFile": ".\\contrib\\win32\\openssh\\images\\DockerFile",
-      "AdditionalContextFiles": [ ".\\contrib\\win32\\openssh\\images\\OpenSSH-build.ps1" ],
+      "DockerFile": ".\\contrib\\win32\\openssh\\DockerFile",
+      "AdditionalContextFiles": [ ".\\contrib\\win32\\openssh\\OpenSSH-build.ps1" ],
       "DockerImageName": "di-openssh-x64",
       "BinaryBucket": "OpenSSH-Win64",
       "ArtifactsExpected": 1,
@@ -127,8 +127,8 @@
         "-m",
         "3968m"
       ],
-      "DockerFile": ".\\contrib\\win32\\openssh\\images\\DockerFile",
-      "AdditionalContextFiles": [ ".\\contrib\\win32\\openssh\\images\\OpenSSH-build.ps1" ],
+      "DockerFile": ".\\contrib\\win32\\openssh\\DockerFile",
+      "AdditionalContextFiles": [ ".\\contrib\\win32\\openssh\\OpenSSH-build.ps1" ],
       "DockerImageName": "di-openssh-X86",
       "BinaryBucket": "OpenSSH-Win32",
       "ArtifactsExpected": 1,
@@ -142,8 +142,8 @@
         "-m",
         "3968m"
       ],
-      "DockerFile": ".\\contrib\\win32\\openssh\\images\\DockerFile",
-      "AdditionalContextFiles": [ ".\\contrib\\win32\\openssh\\images\\OpenSSH-build.ps1" ],
+      "DockerFile": ".\\contrib\\win32\\openssh\\DockerFile",
+      "AdditionalContextFiles": [ ".\\contrib\\win32\\openssh\\OpenSSH-build.ps1" ],
       "DockerImageName": "di-openssh-arm",
       "BinaryBucket": "OpenSSH-Arm"
     },
@@ -155,8 +155,8 @@
         "-m",
         "3968m"
       ],
-      "DockerFile": ".\\contrib\\win32\\openssh\\images\\DockerFile",
-      "AdditionalContextFiles": [ ".\\contrib\\win32\\openssh\\images\\OpenSSH-build.ps1" ],
+      "DockerFile": ".\\contrib\\win32\\openssh\\DockerFile",
+      "AdditionalContextFiles": [ ".\\contrib\\win32\\openssh\\OpenSSH-build.ps1" ],
       "DockerImageName": "di-openssh-arm64",
       "BinaryBucket": "OpenSSH-Arm64"
     },
@@ -168,8 +168,8 @@
         "-m",
         "3968m"
       ],
-      "DockerFile": ".\\contrib\\win32\\openssh\\images\\DockerFile",
-      "AdditionalContextFiles": [ ".\\contrib\\win32\\openssh\\images\\OpenSSH-build.ps1" ],
+      "DockerFile": ".\\contrib\\win32\\openssh\\DockerFile",
+      "AdditionalContextFiles": [ ".\\contrib\\win32\\openssh\\OpenSSH-build.ps1" ],
       "DockerImageName": "di-openssh-x64",
       "BinaryBucket": "OpenSSH-Win64"
     },
@@ -181,8 +181,8 @@
         "-m",
         "3968m"
       ],
-      "DockerFile": ".\\contrib\\win32\\openssh\\images\\DockerFile",
-      "AdditionalContextFiles": [ ".\\contrib\\win32\\openssh\\images\\OpenSSH-build.ps1" ],
+      "DockerFile": ".\\contrib\\win32\\openssh\\DockerFile",
+      "AdditionalContextFiles": [ ".\\contrib\\win32\\openssh\\OpenSSH-build.ps1" ],
       "DockerImageName": "di-openssh-x86",
       "BinaryBucket": "OpenSSH-Win32"
     },
@@ -194,8 +194,8 @@
         "-m",
         "3968m"
       ],
-      "DockerFile": ".\\contrib\\win32\\openssh\\images\\DockerFile",
-      "AdditionalContextFiles": [ ".\\contrib\\win32\\openssh\\images\\OpenSSH-build.ps1" ],
+      "DockerFile": ".\\contrib\\win32\\openssh\\DockerFile",
+      "AdditionalContextFiles": [ ".\\contrib\\win32\\openssh\\OpenSSH-build.ps1" ],
       "DockerImageName": "di-openssh-arm",
       "BinaryBucket": "OpenSSH-Arm"
     },
@@ -207,8 +207,8 @@
         "-m",
         "3968m"
       ],
-      "DockerFile": ".\\contrib\\win32\\openssh\\images\\DockerFile",
-      "AdditionalContextFiles": [ ".\\contrib\\win32\\openssh\\images\\OpenSSH-build.ps1" ],
+      "DockerFile": ".\\contrib\\win32\\openssh\\DockerFile",
+      "AdditionalContextFiles": [ ".\\contrib\\win32\\openssh\\OpenSSH-build.ps1" ],
       "DockerImageName": "di-openssh-arm64",
       "BinaryBucket": "OpenSSH-Arm64"
     }
