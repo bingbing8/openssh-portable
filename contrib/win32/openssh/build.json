@@ -3,7 +3,7 @@
     {
       "Name": "Onecore-X64",
       "RepoDestinationPath": "C:\\OpenSSH",
-      "BuildCommand": "C:\\OpenSSH-build.ps1 -Mode Build -repolocation _RepoDestinationPath_ -destination _DockerVolume_ -NativeHostArch X64 -Configuration Release -OneCore",
+      "BuildCommand": "C:\\OpenSSH-build.ps1 -repolocation _RepoDestinationPath_ -destination _DockerVolume_ -NativeHostArch X64 -Configuration Release -OneCore",
       "BuildDockerOptions": [
         "-m",
         "3968m"
@@ -116,6 +116,7 @@
       "AdditionalContextFiles": [ ".\\contrib\\win32\\openssh\\images\\OpenSSH-build.ps1" ],
       "DockerImageName": "di-openssh-x64",
       "BinaryBucket": "OpenSSH-Win64",
+      "ArtifactsExpected": 1,
       "VariableForExtractedBinariesPath": "OpenSSH-X64"
     },
     {
@@ -130,6 +131,7 @@
       "AdditionalContextFiles": [ ".\\contrib\\win32\\openssh\\images\\OpenSSH-build.ps1" ],
       "DockerImageName": "di-openssh-X86",
       "BinaryBucket": "OpenSSH-Win32",
+      "ArtifactsExpected": 1,
       "VariableForExtractedBinariesPath": "OpenSSH-X86"
     },
     {
