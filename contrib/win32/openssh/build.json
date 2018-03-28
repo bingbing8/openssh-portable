@@ -129,7 +129,7 @@
       ],
       "DockerFile": ".\\contrib\\win32\\openssh\\DockerFile",
       "AdditionalContextFiles": [ ".\\contrib\\win32\\openssh\\OpenSSH-build.ps1" ],
-      "DockerImageName": "di-openssh-X86",
+      "DockerImageName": "di-openssh-x86",
       "BinaryBucket": "OpenSSH-Win32",
       "ArtifactsExpected": 1,
       "VariableForExtractedBinariesPath": "OpenSSH-X86"
