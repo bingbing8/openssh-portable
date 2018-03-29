@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <SignConfigXML>
   <!-- ****Begin**** BothDual - Dual (Sha256 and Sha1) AuthenticodeDual) and should be StrongName  ******** -->
- <job platform="" configuration="" dest="__OUTPATHROOT__\signed" jobname="OpenSSH" approvers="kura">
+ <job platform="" configuration="" dest="__OUTPATHROOT__\signed" jobname="OpenSSH" approvers="gstolt,vigarg">
     <file src="__INPATHROOT__\libcrypto.dll" signType="AuthenticodeDual" dest="__OUTPATHROOT__\libcrypto.dll" />
     <file src="__INPATHROOT__\scp.exe" signType="AuthenticodeDual" dest="__OUTPATHROOT__\scp.exe" />
     <file src="__INPATHROOT__\sftp-server.exe" signType="AuthenticodeDual" dest="__OUTPATHROOT__\sftp-server.exe" />
