@@ -35,7 +35,7 @@ try
     Write-Verbose "Copying $buildLog to $repolocation\$($Bucket)_symbols" -verbose
     Copy-Item -Path $buildLog -Destination "$($Bucket)_symbols\" -Force -ErrorAction SilentlyContinue    
 
-    Compress-Archive "$Bucket_symbols" -DestinationPath "$destination\$repolocation\$($Bucket)_symbols"
+    Compress-Archive -path "$repolocation\$($Bucket)_symbols" -DestinationPath "$destination\$($Bucket)_symbols"
 }
 finally
 {
