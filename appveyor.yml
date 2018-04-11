@@ -12,6 +12,7 @@ init:
 
 build_script:
   - ps: |
+      [Environment]::OSVersion | fl *
       Import-Module $env:APPVEYOR_BUILD_FOLDER\contrib\win32\openssh\AppveyorHelper.psm1
       Invoke-AppVeyorBuild
 
