@@ -8,17 +8,11 @@ Describe "Setup Tests" -Tags "Setup" {
         if($OpenSSHTestInfo -eq $null)
         {
             Throw "`$OpenSSHTestInfo is null. Please run Set-OpenSSHTestEnvironment to set test environments."
-        }
-        
-        $testDir = "$($OpenSSHTestInfo["TestDataPath"])\$suite"
-        if( -not (Test-path $testDir -PathType Container))
-        {
-            $null = New-Item $testDir -ItemType directory -Force -ErrorAction SilentlyContinue
-        }        
+        }     
         
         $windowsInBox = $OpenSSHTestInfo["WindowsInBox"]
         $binPath = $OpenSSHTestInfo["OpenSSHBinPath"]
-        $dataPath = Join-path $env:ProgramData ssh
+        $dataPath = Join-path $env:ProgramData ssh        
         
         $systemSid = Get-UserSID -WellKnownSidType ([System.Security.Principal.WellKnownSidType]::LocalSystemSid)
         $adminsSid = Get-UserSID -WellKnownSidType ([System.Security.Principal.WellKnownSidType]::BuiltinAdministratorsSid)
@@ -318,83 +312,12 @@ Describe "Setup Tests" -Tags "Setup" {
         It "$tC.$tI - Validate Registry key ssh-agent\Type" {
             $p = Get-ItemPropertyValue (Join-Path $servicePath "ssh-agent") -Name "Type"            
             $p | Should Be 16
-        }
-        
+        }        
 
         It "$tC.$tI - Validate Registry key to ssh-agent\Security\Security" { 
             $p = Get-ItemPropertyValue (Join-Path $servicePath "ssh-agent\Security") -Name Security            
             $p.Gettype() | Should Be byte[]
-        }
-
-        It "$tC.$tI - Validate security access to ssh-agent service" {            
-            $a = @(cmd /c "sc sdshow ssh-agent")
-            $b = $a[-1] -split "[D|S]:"
-
-            $expected_dacl_aces = @("(A;;CCLCSWRPWPDTLOCRRC;;;SY)", "(A;;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;BA)", "(A;;CCLCSWLOCRRC;;;IU)", "(A;;CCLCSWLOCRRC;;;SU)", "(A;;RP;;;AU)")
-            $c = @($b | ? { -not [string]::IsNullOrWhiteSpace($_) })
-            $dacl = $c[0]
-            $dacl_aces = $dacl -split "(\([;|\w]+\))"
-            $actual_dacl_aces = $dacl_aces | ? { -not [string]::IsNullOrWhiteSpace($_) }
-
-            $expected_dacl_aces | % {
-                $actual_dacl_aces -contains $_ | Should Be $true
-            }
-            $actual_dacl_aces | % {
-                $expected_dacl_aces -contains $_ | Should Be $true
-            }
-
-            if($c.Count -gt 1) {                
-                $c[1] | Should Be "(AU;FA;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;WD)"            
-            }
-        }
-
-        
-        It "$tC.$tI - Validate properties of ssh-agent service" {            
-            $sshdSvc = Get-service ssh-agent
-            $sshdSvc.StartType | Should Be ([System.ServiceProcess.ServiceStartMode]::Manual)
-            $sshdSvc.ServiceType | Should Be ([System.ServiceProcess.ServiceType]::Win32OwnProcess)
-            $sshdSvc.ServiceName | Should Be "ssh-agent"
-            $sshdSvc.DisplayName | Should BeLike "OpenSSH*"
-            $sshdSvc.Name | Should Be "ssh-agent"
-            ($sshdSvc.DependentServices).Count | Should Be 0
-            ($sshdSvc.ServicesDependedOn).Count | Should Be 0
-            ($sshdSvc.RequiredServices).Count | Should Be 0
-        }
-
-        It "$tC.$tI - Validate security access to sshd service" {            
-            $a = @(cmd /c "sc sdshow sshd")
-            $b = $a[-1] -split "[D|S]:"
-
-            $expected_dacl_aces = @("(A;;CCLCSWRPWPDTLOCRRC;;;SY)", "(A;;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;BA)", "(A;;CCLCSWLOCRRC;;;IU)", "(A;;CCLCSWLOCRRC;;;SU)")
-            $c = @($b | ? { -not [string]::IsNullOrWhiteSpace($_) })
-            $dacl = $c[0]
-            $dacl_aces = $dacl -split "(\([;|\w]+\))"
-            $actual_dacl_aces = $dacl_aces | ? { -not [string]::IsNullOrWhiteSpace($_) }
-
-            $expected_dacl_aces | % {
-                $actual_dacl_aces -contains $_ | Should Be $true
-            }
-            $actual_dacl_aces | % {
-                $expected_dacl_aces -contains $_ | Should Be $true
-            }
-
-            if($c.Count -gt 1) {                
-                $c[1] | Should Be "(AU;FA;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;WD)"            
-            }
-        }
-
-        It "$tC.$tI - Validate properties of sshd service" {            
-            $sshdSvc = Get-service sshd
-            $sshdSvc.StartType | Should Be ([System.ServiceProcess.ServiceStartMode]::Manual)
-            $sshdSvc.ServiceType | Should Be ([System.ServiceProcess.ServiceType]::Win32OwnProcess)
-            $sshdSvc.ServiceName | Should Be "sshd"
-            $sshdSvc.DisplayName | Should BeLike "OpenSSH*"
-            $sshdSvc.Name | Should Be "sshd"
-            ($sshdSvc.DependentServices).Count | Should Be 0
-            ($sshdSvc.ServicesDependedOn).Count | Should Be 0
-            ($sshdSvc.RequiredServices).Count | Should Be 0
-        }
-        
+        }        
 
         It "$tC.$tI - Validate Registry key sshd\Description" {
             $p = Get-ItemPropertyValue (Join-Path $servicePath "sshd") -Name "Description"            
@@ -454,6 +377,82 @@ Describe "Setup Tests" -Tags "Setup" {
         }
     }
 
+    Context "$tC - Validate service setttins" {
+        BeforeAll {            
+            $tI=1
+        }        
+        AfterAll{$tC++}
+        AfterEach { $tI++ }
+
+        It "$tC.$tI - Validate properties of ssh-agent service" {            
+            $sshdSvc = Get-service ssh-agent
+            $sshdSvc.StartType | Should Be ([System.ServiceProcess.ServiceStartMode]::Manual)
+            $sshdSvc.ServiceType | Should Be ([System.ServiceProcess.ServiceType]::Win32OwnProcess)
+            $sshdSvc.ServiceName | Should Be "ssh-agent"
+            $sshdSvc.DisplayName | Should BeLike "OpenSSH*"
+            $sshdSvc.Name | Should Be "ssh-agent"
+            ($sshdSvc.DependentServices).Count | Should Be 0
+            ($sshdSvc.ServicesDependedOn).Count | Should Be 0
+            ($sshdSvc.RequiredServices).Count | Should Be 0
+        }
+
+        It "$tC.$tI - Validate properties of sshd service" {            
+            $sshdSvc = Get-service sshd
+            $sshdSvc.StartType | Should Be ([System.ServiceProcess.ServiceStartMode]::Manual)
+            $sshdSvc.ServiceType | Should Be ([System.ServiceProcess.ServiceType]::Win32OwnProcess)
+            $sshdSvc.ServiceName | Should Be "sshd"
+            $sshdSvc.DisplayName | Should BeLike "OpenSSH*"
+            $sshdSvc.Name | Should Be "sshd"
+            ($sshdSvc.DependentServices).Count | Should Be 0
+            ($sshdSvc.ServicesDependedOn).Count | Should Be 0
+            ($sshdSvc.RequiredServices).Count | Should Be 0
+        }
+
+        It "$tC.$tI - Validate security access to ssh-agent service" {            
+            $a = @(cmd /c "sc sdshow ssh-agent")
+            $b = $a[-1] -split "[D|S]:"
+
+            $expected_dacl_aces = @("(A;;CCLCSWRPWPDTLOCRRC;;;SY)", "(A;;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;BA)", "(A;;CCLCSWLOCRRC;;;IU)", "(A;;CCLCSWLOCRRC;;;SU)", "(A;;RP;;;AU)")
+            $c = @($b | ? { -not [string]::IsNullOrWhiteSpace($_) })
+            $dacl = $c[0]
+            $dacl_aces = $dacl -split "(\([;|\w]+\))"
+            $actual_dacl_aces = $dacl_aces | ? { -not [string]::IsNullOrWhiteSpace($_) }
+
+            $expected_dacl_aces | % {
+                $actual_dacl_aces -contains $_ | Should Be $true
+            }
+            $actual_dacl_aces | % {
+                $expected_dacl_aces -contains $_ | Should Be $true
+            }
+
+            if($c.Count -gt 1) {                
+                $c[1] | Should Be "(AU;FA;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;WD)"            
+            }
+        }
+
+        It "$tC.$tI - Validate security access to sshd service" {            
+            $a = @(cmd /c "sc sdshow sshd")
+            $b = $a[-1] -split "[D|S]:"
+
+            $expected_dacl_aces = @("(A;;CCLCSWRPWPDTLOCRRC;;;SY)", "(A;;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;BA)", "(A;;CCLCSWLOCRRC;;;IU)", "(A;;CCLCSWLOCRRC;;;SU)")
+            $c = @($b | ? { -not [string]::IsNullOrWhiteSpace($_) })
+            $dacl = $c[0]
+            $dacl_aces = $dacl -split "(\([;|\w]+\))"
+            $actual_dacl_aces = $dacl_aces | ? { -not [string]::IsNullOrWhiteSpace($_) }
+
+            $expected_dacl_aces | % {
+                $actual_dacl_aces -contains $_ | Should Be $true
+            }
+            $actual_dacl_aces | % {
+                $expected_dacl_aces -contains $_ | Should Be $true
+            }
+
+            if($c.Count -gt 1) {                
+                $c[1] | Should Be "(AU;FA;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;WD)"            
+            }
+        }
+    }
+
     Context "$tC - Validate Firewall settings" {
         BeforeAll {
             $firwallRuleName = "OpenSSH-Server-In-TCP"
@@ -478,5 +477,5 @@ Describe "Setup Tests" -Tags "Setup" {
             $fwportFilter.LocalPort | Should Be 22
             $fwportFilter.RemotePort | Should Be 'Any'
         }        
-    }    
+    }
 }
