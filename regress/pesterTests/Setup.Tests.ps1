@@ -304,6 +304,12 @@ Describe "Setup Tests" -Tags "Setup" {
             $p | Should Be "LocalSystem"
         }
 
+        It "$tC.$tI - Validate Registry key ssh-agent\RequiredPrivileges"  -skip:(!$windowsInBox) {            
+            $p = Get-ItemPropertyValue (Join-Path $servicePath "ssh-agent") -Name "RequiredPrivileges"
+            $p.count | Should Be 1
+            $p[0] | Should Be "SeImpersonatePrivilege"
+        }
+
         It "$tC.$tI - Validate Registry key ssh-agent\Start" {
             $p = Get-ItemPropertyValue (Join-Path $servicePath "ssh-agent") -Name "Start"            
             $p | Should Be 3
@@ -322,41 +328,71 @@ Describe "Setup Tests" -Tags "Setup" {
 
         It "$tC.$tI - Validate security access to ssh-agent service" {            
             $a = @(cmd /c "sc sdshow ssh-agent")
-            $b = $a[-1] -split "[D:S]:"
+            $b = $a[-1] -split "[D|S]:"
 
-            $c = @($b | ? { -not [string]::IsNullOrWhiteSpace($_) })            
+            $expected_dacl_aces = @("(A;;CCLCSWRPWPDTLOCRRC;;;SY)", "(A;;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;BA)", "(A;;CCLCSWLOCRRC;;;IU)", "(A;;CCLCSWLOCRRC;;;SU)", "(A;;RP;;;AU)")
+            $c = @($b | ? { -not [string]::IsNullOrWhiteSpace($_) })
             $dacl = $c[0]
             $dacl_aces = $dacl -split "(\([;|\w]+\))"
-            $dacl_aces -contains "(A;;CCLCSWRPWPDTLOCRRC;;;SY)" | Should Be $true
-            $dacl_aces -contains "(A;;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;BA)" | Should Be $true
-            $dacl_aces -contains "(A;;CCLCSWLOCRRC;;;IU)" | Should Be $true
-            $dacl_aces -contains "(A;;CCLCSWLOCRRC;;;SU)" | Should Be $true
-            $dacl_aces -contains "(A;;RP;;;AU)" | Should Be $true
-            if($c.Count -gt 1)
-            {                
-                $sacl = $c[1]
-                $sacl_aces = $sacl -split "(\([;\w]+\))"
-                $sacl_aces -contains "(AU;FA;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;WD)" | Should Be $true
+            $actual_dacl_aces = $dacl_aces | ? { -not [string]::IsNullOrWhiteSpace($_) }
+
+            $expected_dacl_aces | % {
+                $actual_dacl_aces -contains $_ | Should Be $true
             }
+            $actual_dacl_aces | % {
+                $expected_dacl_aces -contains $_ | Should Be $true
+            }
+
+            if($c.Count -gt 1) {                
+                $c[1] | Should Be "(AU;FA;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;WD)"            
+            }
+        }
+
+        
+        It "$tC.$tI - Validate properties of ssh-agent service" {            
+            $sshdSvc = Get-service ssh-agent
+            $sshdSvc.StartType | Should Be ([System.ServiceProcess.ServiceStartMode]::Manual)
+            $sshdSvc.ServiceType | Should Be ([System.ServiceProcess.ServiceType]::Win32OwnProcess)
+            $sshdSvc.ServiceName | Should Be "ssh-agent"
+            $sshdSvc.DisplayName | Should BeLike "OpenSSH*"
+            $sshdSvc.Name | Should Be "ssh-agent"
+            ($sshdSvc.DependentServices).Count | Should Be 0
+            ($sshdSvc.ServicesDependedOn).Count | Should Be 0
+            ($sshdSvc.RequiredServices).Count | Should Be 0
         }
 
         It "$tC.$tI - Validate security access to sshd service" {            
             $a = @(cmd /c "sc sdshow sshd")
-            $b = $a[-1] -split "[D:S]:"
+            $b = $a[-1] -split "[D|S]:"
 
-            $c = @($b | ? { -not [string]::IsNullOrWhiteSpace($_) })            
+            $expected_dacl_aces = @("(A;;CCLCSWRPWPDTLOCRRC;;;SY)", "(A;;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;BA)", "(A;;CCLCSWLOCRRC;;;IU)", "(A;;CCLCSWLOCRRC;;;SU)")
+            $c = @($b | ? { -not [string]::IsNullOrWhiteSpace($_) })
             $dacl = $c[0]
             $dacl_aces = $dacl -split "(\([;|\w]+\))"
-            $dacl_aces -contains "(A;;CCLCSWRPWPDTLOCRRC;;;SY)" | Should Be $true
-            $dacl_aces -contains "(A;;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;BA)" | Should Be $true
-            $dacl_aces -contains "(A;;CCLCSWLOCRRC;;;IU)" | Should Be $true
-            $dacl_aces -contains "(A;;CCLCSWLOCRRC;;;SU)" | Should Be $true
-            if($c.Count -gt 1)
-            {                
-                $sacl = $c[1]
-                $sacl_aces = $sacl -split "(\([;\w]+\))"
-                $sacl_aces -contains "(AU;FA;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;WD)" | Should Be $true
+            $actual_dacl_aces = $dacl_aces | ? { -not [string]::IsNullOrWhiteSpace($_) }
+
+            $expected_dacl_aces | % {
+                $actual_dacl_aces -contains $_ | Should Be $true
             }
+            $actual_dacl_aces | % {
+                $expected_dacl_aces -contains $_ | Should Be $true
+            }
+
+            if($c.Count -gt 1) {                
+                $c[1] | Should Be "(AU;FA;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;WD)"            
+            }
+        }
+
+        It "$tC.$tI - Validate properties of sshd service" {            
+            $sshdSvc = Get-service sshd
+            $sshdSvc.StartType | Should Be ([System.ServiceProcess.ServiceStartMode]::Manual)
+            $sshdSvc.ServiceType | Should Be ([System.ServiceProcess.ServiceType]::Win32OwnProcess)
+            $sshdSvc.ServiceName | Should Be "sshd"
+            $sshdSvc.DisplayName | Should BeLike "OpenSSH*"
+            $sshdSvc.Name | Should Be "sshd"
+            ($sshdSvc.DependentServices).Count | Should Be 0
+            ($sshdSvc.ServicesDependedOn).Count | Should Be 0
+            ($sshdSvc.RequiredServices).Count | Should Be 0
         }
         
 
@@ -379,6 +415,19 @@ Describe "Setup Tests" -Tags "Setup" {
         It "$tC.$tI - Validate Registry key sshd\ObjectName" {
             $p = Get-ItemPropertyValue (Join-Path $servicePath "sshd") -Name "ObjectName"            
             $p | Should Be "LocalSystem"
+        }
+
+        It "$tC.$tI - Validate Registry key sshd\RequiredPrivileges"  -skip:(!$windowsInBox) {
+
+            $expected = @("SeAssignPrimaryTokenPrivilege", "SeTcbPrivilege", "SeBackupPrivilege", "SeRestorePrivilege", "SeImpersonatePrivilege")
+            $p = Get-ItemPropertyValue (Join-Path $servicePath "sshd") -Name "RequiredPrivileges"
+            $expected | % {
+                $p -contains $_ | Should Be $true
+            }
+
+            $p | % {
+                $expected -contains $_ | Should Be $true
+            }
         }
 
         It "$tC.$tI - Validate Registry key sshd\Start" {
@@ -424,6 +473,10 @@ Describe "Setup Tests" -Tags "Setup" {
             $rule.Direction.ToString() | Should Be 'Inbound'
             $rule.Action.ToString() | Should Be 'Allow'
             $rule.StatusCode | Should Be 65536
+            $fwportFilter = $rule | Get-NetFirewallPortFilter
+            $fwportFilter.Protocol | Should Be 'TCP'
+            $fwportFilter.LocalPort | Should Be 22
+            $fwportFilter.RemotePort | Should Be 'Any'
         }        
     }    
 }
