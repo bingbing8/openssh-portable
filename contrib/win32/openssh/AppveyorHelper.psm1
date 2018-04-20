@@ -338,6 +338,22 @@ function Invoke-OpenSSHTests
         Write-Warning $errorMessage
         Write-BuildMessage -Message $errorMessage -Category Error
         Set-BuildVariable TestPassed False
+    }    
+
+    Invoke-OpenSSHUninstallTest
+    if (($OpenSSHTestInfo -eq $null) -or (-not (Test-Path $OpenSSHTestInfo["UninstallTestResultsFile"])))
+    {
+        Write-Warning "Test result file $OpenSSHTestInfo["UninstallTestResultsFile"] not found after tests."
+        Write-BuildMessage -Message "Test result file $OpenSSHTestInfo["UninstallTestResultsFile"] not found after tests." -Category Error
+        Set-BuildVariable TestPassed False
+    }
+    $xml = [xml](Get-Content $OpenSSHTestInfo["UninstallTestResultsFile"] | out-string)
+    if ([int]$xml.'test-results'.failures -gt 0) 
+    {
+        $errorMessage = "$($xml.'test-results'.failures) uninstall tests in regress\pesterTests failed. Detail test log is at $($OpenSSHTestInfo["UninstallTestResultsFile"])."
+        Write-Warning $errorMessage
+        Write-BuildMessage -Message $errorMessage -Category Error
+        Set-BuildVariable TestPassed False
     }
 
     # Writing out warning when the $Error.Count is non-zero. Tests Should clean $Error after success.
@@ -359,14 +375,21 @@ function Publish-OpenSSHTestResults
         if( (Test-Path $Global:OpenSSHTestInfo["SetupTestResultsFile"]) -and $setupresultFile)
         {
             (New-Object 'System.Net.WebClient').UploadFile("https://ci.appveyor.com/api/testresults/nunit/$($env:APPVEYOR_JOB_ID)", $setupresultFile)
-             Write-BuildMessage -Message "Test results uploaded!" -Category Information
+             Write-BuildMessage -Message "Setup test results uploaded!" -Category Information
         }
 
         $E2EresultFile = Resolve-Path $Global:OpenSSHTestInfo["E2ETestResultsFile"] -ErrorAction Ignore
         if( (Test-Path $Global:OpenSSHTestInfo["E2ETestResultsFile"]) -and $E2EresultFile)
         {
             (New-Object 'System.Net.WebClient').UploadFile("https://ci.appveyor.com/api/testresults/nunit/$($env:APPVEYOR_JOB_ID)", $E2EresultFile)
-             Write-BuildMessage -Message "Test results uploaded!" -Category Information
+             Write-BuildMessage -Message "E2E test results uploaded!" -Category Information
+        }
+
+        $uninstallResultFile = Resolve-Path $Global:OpenSSHTestInfo["UninstallTestResultsFile"] -ErrorAction Ignore
+        if( (Test-Path $Global:OpenSSHTestInfo["UninstallTestResultsFile"]) -and $uninstallResultFile)
+        {
+            (New-Object 'System.Net.WebClient').UploadFile("https://ci.appveyor.com/api/testresults/nunit/$($env:APPVEYOR_JOB_ID)", $uninstallResultFile)
+             Write-BuildMessage -Message "Uninstall test results uploaded!" -Category Information
         }
     }
 

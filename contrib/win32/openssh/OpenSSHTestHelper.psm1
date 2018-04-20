@@ -6,6 +6,7 @@ Import-Module $PSScriptRoot\OpenSSHUtils -Force
 [System.IO.DirectoryInfo] $repositoryRoot = Get-RepositoryRoot
 # test environment parameters initialized with defaults
 $SetupTestResultsFileName = "setupTestResults.xml"
+$UninstallTestResultsFileName = "UninstallTestResults.xml"
 $E2ETestResultsFileName = "E2ETestResults.xml"
 $UnitTestResultsFileName = "UnitTestResults.txt"
 $TestSetupLogFileName = "TestSetupLog.txt"
@@ -18,6 +19,7 @@ $OpenSSHConfigPath = Join-Path $env:ProgramData "ssh"
 
 $Script:TestDataPath = "$env:SystemDrive\OpenSSHTests"
 $Script:SetupTestResultsFile = Join-Path $TestDataPath $SetupTestResultsFileName
+$Script:UninstallTestResultsFile = Join-Path $TestDataPath $UninstallTestResultsFileName
 $Script:E2ETestResultsFile = Join-Path $TestDataPath $E2ETestResultsFileName
 $Script:UnitTestResultsFile = Join-Path $TestDataPath $UnitTestResultsFileName
 $Script:TestSetupLogFile = Join-Path $TestDataPath $TestSetupLogFileName
@@ -235,19 +237,21 @@ function Set-BasicTestInfo
     $Script:TestDataPath = $TestDataPath;
     $Script:E2ETestResultsFile = Join-Path $TestDataPath $E2ETestResultsFileName
     $Script:SetupTestResultsFile = Join-Path $TestDataPath $SetupTestResultsFileName
+    $Script:UninstallTestResultsFile = Join-Path $TestDataPath $UninstallTestResultsFileName
     $Script:UnitTestResultsFile = Join-Path $TestDataPath $UnitTestResultsFileName        
     $Script:TestSetupLogFile = Join-Path $TestDataPath $TestSetupLogFileName
     $Script:UnitTestDirectory = Get-UnitTestDirectory
     $Script:NoLibreSSL = $NoLibreSSL.IsPresent
 
     $Global:OpenSSHTestInfo = @{
-        "TestDataPath" = $TestDataPath;                        # openssh tests path
-        "TestSetupLogFile" = $Script:TestSetupLogFile;         # openssh test setup log file
-        "E2ETestResultsFile" = $Script:E2ETestResultsFile;     # openssh E2E test results file
-        "SetupTestResultsFile" = $Script:SetupTestResultsFile; # openssh setup test test results file
-        "UnitTestResultsFile" = $Script:UnitTestResultsFile;   # openssh unittest test results file
-        "E2ETestDirectory" = $Script:E2ETestDirectory          # the directory of E2E tests
-        "UnitTestDirectory" = $Script:UnitTestDirectory        # the directory of unit tests
+        "TestDataPath" = $TestDataPath;                                     # openssh tests path
+        "TestSetupLogFile" = $Script:TestSetupLogFile;                      # openssh test setup log file
+        "E2ETestResultsFile" = $Script:E2ETestResultsFile;                  # openssh E2E test results file
+        "SetupTestResultsFile" = $Script:SetupTestResultsFile;              # openssh setup test test results file
+        "UninstallTestResultsFile" = $Script:UninstallTestResultsFile;      # openssh Uninstall test test results file
+        "UnitTestResultsFile" = $Script:UnitTestResultsFile;                # openssh unittest test results file
+        "E2ETestDirectory" = $Script:E2ETestDirectory                       # the directory of E2E tests
+        "UnitTestDirectory" = $Script:UnitTestDirectory                     # the directory of unit tests
         "NoLibreSSL" = $Script:NoLibreSSL
         "WindowsInBox" = $Script:WindowsInBox
         }
@@ -606,7 +610,7 @@ function Get-UnitTestDirectory
 
 <#
     .Synopsis
-    Run OpenSSH pester tests.
+    Run OpenSSH Setup tests.
 #>
 function Invoke-OpenSSHSetupTest
 {    
@@ -616,6 +620,21 @@ function Invoke-OpenSSHSetupTest
     Write-Log -Message "Running OpenSSH Setup tests..."
     $testFolders = @(Get-ChildItem *.tests.ps1 -Recurse | ForEach-Object{ Split-Path $_.FullName} | Sort-Object -Unique)
     Invoke-Pester $testFolders -OutputFormat NUnitXml -OutputFile $Script:SetupTestResultsFile -Tag 'Setup' -PassThru
+    Pop-Location
+}
+
+<#
+    .Synopsis
+    Run OpenSSH uninstall tests.
+#>
+function Invoke-OpenSSHUninstallTest
+{    
+    # Discover all CI tests and run them.
+    Import-Module pester -force -global
+    Push-Location $Script:E2ETestDirectory
+    Write-Log -Message "Running OpenSSH Uninstall tests..."
+    $testFolders = @(Get-ChildItem *.tests.ps1 -Recurse | ForEach-Object{ Split-Path $_.FullName} | Sort-Object -Unique)
+    Invoke-Pester $testFolders -OutputFormat NUnitXml -OutputFile $Script:UninstallTestResultsFile -Tag 'Uninstall' -PassThru
     Pop-Location
 }
 
@@ -777,4 +796,4 @@ function Write-Log
     }  
 }
 
-Export-ModuleMember -Function Set-BasicTestInfo, Set-OpenSSHTestEnvironment, Clear-OpenSSHTestEnvironment, Invoke-OpenSSHSetupTest, Invoke-OpenSSHUnitTest, Invoke-OpenSSHE2ETest, Backup-OpenSSHTestInfo, Restore-OpenSSHTestInfo
+Export-ModuleMember -Function Set-BasicTestInfo, Set-OpenSSHTestEnvironment, Clear-OpenSSHTestEnvironment, Invoke-OpenSSHSetupTest, Invoke-OpenSSHUnitTest, Invoke-OpenSSHE2ETest, Invoke-OpenSSHUninstallTest, Backup-OpenSSHTestInfo, Restore-OpenSSHTestInfo
