@@ -274,6 +274,7 @@ function Publish-Artifact
         Add-Artifact -artifacts $artifacts -FileToAdd $Global:OpenSSHTestInfo["SetupTestResultsFile"]
         Add-Artifact -artifacts $artifacts -FileToAdd $Global:OpenSSHTestInfo["UnitTestResultsFile"]
         Add-Artifact -artifacts $artifacts -FileToAdd $Global:OpenSSHTestInfo["E2ETestResultsFile"]
+        Add-Artifact -artifacts $artifacts -FileToAdd $Global:OpenSSHTestInfo["UninstallTestResultsFile"]
         Add-Artifact -artifacts $artifacts -FileToAdd $Global:OpenSSHTestInfo["TestSetupLogFile"]
     }
     
