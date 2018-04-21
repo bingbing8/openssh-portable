@@ -107,12 +107,7 @@ WARNING: Following changes will be made to OpenSSH configuration
         return
     }
 
-    Install-OpenSSHTestDependencies
-
-    if(-not (Test-path $TestDataPath -PathType Container))
-    {
-       New-Item -ItemType Directory -Path $TestDataPath -Force -ErrorAction SilentlyContinue | out-null
-    }
+    Install-OpenSSHTestDependencies    
 
     $backupConfigPath = Join-Path $OpenSSHConfigPath sshd_config.ori
     $targetsshdConfig = Join-Path $OpenSSHConfigPath sshd_config
@@ -304,6 +299,10 @@ function Set-BasicTestInfo
     }
 
     Install-OpenSSHTestDependencies -TestHarness
+    if(-not (Test-path $TestDataPath -PathType Container))
+    {
+       New-Item -ItemType Directory -Path $TestDataPath -Force -ErrorAction SilentlyContinue | out-null
+    }
 }
 
 #TODO - this is Windows specific. Need to be in PAL
