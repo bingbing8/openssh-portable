@@ -47,8 +47,6 @@ Describe "Setup Tests" -Tags "Setup" {
             $CAPABILITY_SID = "S-1-15-3-1024-1065365936-1281604716-3511738428-1654721687-432734479-3232135806-4053264122-3456934681"            
             $nonPropagate = $myACL.Access | ? {($_.PropagationFlags -eq ([System.Security.AccessControl.PropagationFlags]::None)) -and ($_.IdentityReference -ine $CAPABILITY_SID)}
 
-            $IdAcls | % { $nonPropagate.IdentityReference -contains (Get-UserAccount -UserSid ($_.Identity)) }
-
             foreach ($a in $nonPropagate) {
                 $findItem = $IdAcls | ? {
                     ($a.IdentityReference -eq (Get-UserAccount -UserSid ($_.Identity))) -and `
@@ -97,7 +95,7 @@ Describe "Setup Tests" -Tags "Setup" {
             }
 
             $identities | % {
-                $myACL.Access.IdentityReference -contains (Get-UserAccount -UserSid $_) | Should Be $true
+                (Get-UserAccount -UserSid $_) | Should BeIn $myACL.Access.IdentityReference
             }
 
             foreach ($a in $myACL.Access) {
@@ -108,7 +106,7 @@ Describe "Setup Tests" -Tags "Setup" {
                     $id = Get-UserSID -User $idRefShortValue                                      
                 }
 
-                $identities -contains $id | Should Be $true
+                $id | Should BeIn $identities
 
                 switch ($id)
                 {
@@ -401,11 +399,11 @@ Describe "Setup Tests" -Tags "Setup" {
             $a = sc.exe qprivs sshd 256
             $p = $a | % { if($_ -match "Se[\w]+Privilege" ) {$start = $_.IndexOf("Se");$_.Substring($start, $_.length-$start)}}
             $expected | % {
-                $p -contains $_ | Should Be $true
+                $_ | Should BeIn $p
             }
 
             $p | % {
-                $expected -contains $_ | Should Be $true
+                $_ | Should BeIn $expected
             }
         }
 
@@ -420,10 +418,10 @@ Describe "Setup Tests" -Tags "Setup" {
             $actual_dacl_aces = $dacl_aces | ? { -not [string]::IsNullOrWhiteSpace($_) }
 
             $expected_dacl_aces | % {
-                $actual_dacl_aces -contains $_ | Should Be $true
+                $_ | Should BeIn $actual_dacl_aces
             }
             $actual_dacl_aces | % {
-                $expected_dacl_aces -contains $_ | Should Be $true
+                $_ | Should BeIn $expected_dacl_aces
             }
 
             <# ignore sacl for now
@@ -443,10 +441,10 @@ Describe "Setup Tests" -Tags "Setup" {
             $actual_dacl_aces = $dacl_aces | ? { -not [string]::IsNullOrWhiteSpace($_) }
 
             $expected_dacl_aces | % {
-                $actual_dacl_aces -contains $_ | Should Be $true
+                $_ | Should BeIn $actual_dacl_aces
             }
             $actual_dacl_aces | % {
-                $expected_dacl_aces -contains $_ | Should Be $true
+                $_ | Should BeIn $expected_dacl_aces
             }
 
             <# ignore sacl for now

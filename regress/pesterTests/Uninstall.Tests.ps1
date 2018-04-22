@@ -55,8 +55,6 @@ Describe "Uninstall Tests" -Tags "Uninstall" {
             $CAPABILITY_SID = "S-1-15-3-1024-1065365936-1281604716-3511738428-1654721687-432734479-3232135806-4053264122-3456934681"            
             $nonPropagate = $myACL.Access | ? {($_.PropagationFlags -eq ([System.Security.AccessControl.PropagationFlags]::None)) -and ($_.IdentityReference -ine $CAPABILITY_SID)}
 
-            $IdAcls | % { $nonPropagate.IdentityReference -contains (Get-UserAccount -UserSid ($_.Identity)) }
-
             foreach ($a in $nonPropagate) {
                 $findItem = $IdAcls | ? {
                     ($a.IdentityReference -eq (Get-UserAccount -UserSid ($_.Identity))) -and `
