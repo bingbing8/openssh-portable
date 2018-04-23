@@ -51,12 +51,20 @@ Describe "Setup Tests" -Tags "Setup" {
                 $findItem = $IdAcls | ? {
                     ($a.IdentityReference -eq (Get-UserAccount -UserSid ($_.Identity))) -and `
                     ($a.IsInherited -eq $_.IsInherited) -and `
-                    ($a.AccessControlType -eq ([System.Security.AccessControl.AccessControlType]::Allow)) -and  `
-                    ($a.PropagationFlags -eq ([System.Security.AccessControl.PropagationFlags]::None) -and  `
-                    (([System.Int32]$a.RegistryRights.value__) -eq ($_.RegistryRights))) 
+                    ($a.AccessControlType -eq ([System.Security.AccessControl.AccessControlType]::Allow)) -and  `                    
+                    (([System.Int32]$a.RegistryRights.value__) -eq ($_.RegistryRights))
                 }
                 $findItem | Should Not Be $null
-            }         
+            }
+
+            foreach ($expected in $IdAcls) {
+                $findItem = $nonPropagate | ? {
+                    ((Get-UserAccount -UserSid ($expected.Identity)) -eq $_.IdentityReference) -and `
+                    ($expected.IsInherited -eq $_.IsInherited) -and `                    
+                    ($expected.RegistryRights -eq ([System.Int32]$_.RegistryRights.value__))
+                }
+                $findItem | Should Not Be $null
+            }            
         }
 
         #only validate owner and ACEs of the file
@@ -356,7 +364,7 @@ Describe "Setup Tests" -Tags "Setup" {
         }
     }
 
-    Context "$tC - Validate service setttins" {
+    Context "$tC - Validate service settings" {
         BeforeAll {            
             $tI=1
         }        
