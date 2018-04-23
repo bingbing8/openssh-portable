@@ -72,9 +72,7 @@ Describe "Uninstall Tests" -Tags "Uninstall" {
         BeforeAll {
             if(-not $Windowsbox)
             {
-                $binaries =  $null
-                $dataFile = $null
-                $dataFile1 = $null
+                $binaries =  $null                
                 return
             }
             $tI=1
@@ -110,53 +108,16 @@ Describe "Uninstall Tests" -Tags "Uninstall" {
                     Name = 'ssh-keyscan.exe'
                 }
             )
-            $dataFile =  @(
-                @{
-                    Name = 'sshd_config_default'
-                },
-                @{
-                    Name = 'install-sshd.ps1'
-                },
-                @{
-                    Name = 'uninstall-sshd.ps1'
-                },
-                @{
-                    Name = 'FixHostFilePermissions.ps1'
-                },
-                @{
-                    Name = 'FixUserFilePermissions.ps1'
-                },
-                @{
-                    Name = 'OpenSSHUtils.psm1'
-                },
-                @{
-                    Name = 'OpenSSHUtils.psd1'
-                },
-                @{
-                    Name = 'openssh-events.man'
-                }
-            )
-
-            $dataFile1 = @(
-                @{
-                    Name = "sshd_config"
-                }
-                @{
-                    Name = "logs"
-                    IsDirectory = $true
-                }
-            )
         }
         AfterAll{$tC++}        
         AfterEach { $tI++ }
 
-        It "$tC.$tI - Validate Openssh binary files--<Name>" -TestCases:$binaries{
+        It "$tC.$tI - Validate Openssh binary files--<Name> is removed" -TestCases:$binaries{
             param([string]$Name, [boolean]$IsDirectory = $false)
             if(-not [string]::IsNullOrWhiteSpace($Name)) {
                 (join-path $binPath $Name) | Should Not Exist
             }
-        }       
-        
+        }        
     } 
     
     Context "$tC - Validate Openssh registry entries" {
