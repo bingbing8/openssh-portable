@@ -298,6 +298,8 @@ function Invoke-OpenSSHTests
         Write-Warning "Test result file $OpenSSHTestInfo["SetupTestResultsFile"] not found after tests."
         Write-BuildMessage -Message "Test result file $OpenSSHTestInfo["SetupTestResultsFile"] not found after tests." -Category Error
         Set-BuildVariable TestPassed False
+        Write-Warning "Stop running further tests!"
+        return
     }
     $xml = [xml](Get-Content $OpenSSHTestInfo["SetupTestResultsFile"] | out-string)
     if ([int]$xml.'test-results'.failures -gt 0) 
@@ -306,6 +308,8 @@ function Invoke-OpenSSHTests
         Write-Warning $errorMessage
         Write-BuildMessage -Message $errorMessage -Category Error
         Set-BuildVariable TestPassed False
+        Write-Warning "Stop running further tests!"
+        return
     }
 
     Write-Host "Start running unit tests"
@@ -331,6 +335,8 @@ function Invoke-OpenSSHTests
         Write-Warning "Test result file $OpenSSHTestInfo["E2ETestResultsFile"] not found after tests."
         Write-BuildMessage -Message "Test result file $OpenSSHTestInfo["E2ETestResultsFile"] not found after tests." -Category Error
         Set-BuildVariable TestPassed False
+        Write-Warning "Stop running further tests!"
+        return
     }
     $xml = [xml](Get-Content $OpenSSHTestInfo["E2ETestResultsFile"] | out-string)
     if ([int]$xml.'test-results'.failures -gt 0) 
@@ -339,6 +345,8 @@ function Invoke-OpenSSHTests
         Write-Warning $errorMessage
         Write-BuildMessage -Message $errorMessage -Category Error
         Set-BuildVariable TestPassed False
+        Write-Warning "Stop running further tests!"
+        return
     }    
 
     Invoke-OpenSSHUninstallTest
@@ -348,13 +356,15 @@ function Invoke-OpenSSHTests
         Write-BuildMessage -Message "Test result file $OpenSSHTestInfo["UninstallTestResultsFile"] not found after tests." -Category Error
         Set-BuildVariable TestPassed False
     }
-    $xml = [xml](Get-Content $OpenSSHTestInfo["UninstallTestResultsFile"] | out-string)
-    if ([int]$xml.'test-results'.failures -gt 0) 
-    {
-        $errorMessage = "$($xml.'test-results'.failures) uninstall tests in regress\pesterTests failed. Detail test log is at $($OpenSSHTestInfo["UninstallTestResultsFile"])."
-        Write-Warning $errorMessage
-        Write-BuildMessage -Message $errorMessage -Category Error
-        Set-BuildVariable TestPassed False
+    else {
+        $xml = [xml](Get-Content $OpenSSHTestInfo["UninstallTestResultsFile"] | out-string)
+        if ([int]$xml.'test-results'.failures -gt 0) 
+        {
+            $errorMessage = "$($xml.'test-results'.failures) uninstall tests in regress\pesterTests failed. Detail test log is at $($OpenSSHTestInfo["UninstallTestResultsFile"])."
+            Write-Warning $errorMessage
+            Write-BuildMessage -Message $errorMessage -Category Error
+            Set-BuildVariable TestPassed False
+        }
     }
 
     # Writing out warning when the $Error.Count is non-zero. Tests Should clean $Error after success.
