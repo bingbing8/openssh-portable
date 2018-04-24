@@ -34,6 +34,7 @@ wevtutil um `"$etwman`"
 $xml.instrumentationManifest.instrumentation.events.provider.resourceFileName = $sshagentpath.ToString()
 $xml.instrumentationManifest.instrumentation.events.provider.messageFileName = $sshagentpath.ToString()
 
+$streamWriter = $null
 $xmlWriter = $null
 try {
     $streamWriter = new-object System.IO.StreamWriter($etwman)
