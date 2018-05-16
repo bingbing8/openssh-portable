@@ -102,7 +102,7 @@ Describe "Setup Tests" -Tags "Setup" {
                 $identities = @($systemSid, $adminsSid, $trustedInstallerSid, $allApplicationPackagesSid, $allRestrictedApplicationPackagesSid, $usersSid)
             }
 
-            $identities | % {                
+            $identities | % {
                 $myACL.Access.IdentityReference -contains (Get-UserAccount -UserSid $_) | Should Be $true
             }
 
