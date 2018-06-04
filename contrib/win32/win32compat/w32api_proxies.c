@@ -254,7 +254,7 @@ ULONG pRtlNtStatusToDosError(NTSTATUS status)
 			return STATUS_ASSERTION_FAILURE;
 	}
 
-	return s_pLsaNtStatusToWinError(status);
+	return pRtlNtStatusToDosError(status);
 }
 
 NTSTATUS pLsaClose(LSA_HANDLE lsa_h)
