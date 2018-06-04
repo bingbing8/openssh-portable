@@ -114,6 +114,17 @@ load_secur32()
 	return s_hm_secur32;
 }
 
+static HMODULE
+load_ntdll()
+{
+	static HMODULE s_hm_ntdll = NULL;
+
+	if (!s_hm_ntdll)
+		s_hm_ntdll = load_module(L"ntdll.dll");
+
+	return s_hm_ntdll;
+}
+
 FARPROC get_proc_address(HMODULE hm, char* fn)
 {
 	FARPROC ret = GetProcAddress(hm, fn);
@@ -229,18 +240,17 @@ NTSTATUS pLsaAddAccountRights(LSA_HANDLE lsa_h,
 	return s_pLsaAddAccountRights(lsa_h, psid, rights, num_rights);
 }
 
-ULONG pLsaNtStatusToWinError(NTSTATUS status)
+ULONG pRtlNtStatusToDosError(NTSTATUS status)
 {
 	HMODULE hm;
-	typedef ULONG(*LsaNtStatusToWinErrorType)(NTSTATUS);
-	static LsaNtStatusToWinErrorType s_pLsaNtStatusToWinError = NULL;
+	typedef ULONG(*RtlNtStatusToDosErrorType)(NTSTATUS);
+	static RtlNtStatusToDosErrorType s_pRtlNtStatusToDosError = NULL;
 
-	if (!s_pLsaNtStatusToWinError) {
-		if ((hm = load_api_security_lsapolicy()) == NULL &&
-			((hm = load_advapi32()) == NULL))
+	if (!s_pRtlNtStatusToDosError) {
+		if ((hm = load_ntdll()) == NULL)
 			return STATUS_ASSERTION_FAILURE;
 
-		if ((s_pLsaNtStatusToWinError = (LsaNtStatusToWinErrorType)get_proc_address(hm, "LsaNtStatusToWinError")) == NULL)
+		if ((s_pRtlNtStatusToDosError = (RtlNtStatusToDosErrorType)get_proc_address(hm, "RtlNtStatusToDosError")) == NULL)
 			return STATUS_ASSERTION_FAILURE;
 	}
 
