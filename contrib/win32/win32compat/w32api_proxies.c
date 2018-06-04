@@ -93,6 +93,17 @@ load_advapi32()
 }
 
 static HMODULE
+load_api_security_lsapolicy()
+{
+	static HMODULE s_hm_api_security_lsapolicy = NULL;
+
+	if (!s_hm_api_security_lsapolicy)
+		s_hm_api_security_lsapolicy = load_module(L"api-ms-win-security-lsapolicy-l1-1-0.dll");
+
+	return s_hm_api_security_lsapolicy;
+}
+
+static HMODULE
 load_secur32()
 {
 	static HMODULE s_hm_secur32 = NULL;
@@ -167,14 +178,33 @@ NTSTATUS pLsaOpenPolicy(PLSA_UNICODE_STRING system_name,
 	static LsaOpenPolicyType s_pLsaOpenPolicy = NULL;
 
 	if (!s_pLsaOpenPolicy) {
-		if ((hm = load_advapi32()) == NULL)
-			return STATUS_ASSERTION_FAILURE;
+		if ((hm = load_api_security_lsapolicy()) == NULL &&
+			((hm = load_advapi32()) == NULL))
+				return STATUS_ASSERTION_FAILURE;
 
 		if ((s_pLsaOpenPolicy = (LsaOpenPolicyType)get_proc_address(hm, "LsaOpenPolicy")) == NULL)
 			return STATUS_ASSERTION_FAILURE;
 	}
 
 	return s_pLsaOpenPolicy(system_name, attrib, access, handle);
+}
+
+NTSTATUS pLsaFreeMemory(PVOID buffer)
+{
+	HMODULE hm;
+	typedef NTSTATUS(*LsaFreeMemoryType)(PVOID);
+	static LsaFreeMemoryType s_pLsaFreeMemory = NULL;
+
+	if (!s_pLsaFreeMemory) {
+		if ((hm = load_api_security_lsapolicy()) == NULL &&
+			((hm = load_advapi32()) == NULL))
+			return STATUS_ASSERTION_FAILURE;
+
+		if ((s_pLsaFreeMemory = (LsaFreeMemoryType)get_proc_address(hm, "LsaFreeMemory")) == NULL)
+			return STATUS_ASSERTION_FAILURE;
+	}
+
+	return s_pLsaFreeMemory(buffer);
 }
 
 
@@ -188,7 +218,8 @@ NTSTATUS pLsaAddAccountRights(LSA_HANDLE lsa_h,
 	static LsaAddAccountRightsType s_pLsaAddAccountRights = NULL;
 
 	if (!s_pLsaAddAccountRights) {
-		if ((hm = load_advapi32()) == NULL)
+		if ((hm = load_api_security_lsapolicy()) == NULL &&
+			((hm = load_advapi32()) == NULL))
 			return STATUS_ASSERTION_FAILURE;
 
 		if ((s_pLsaAddAccountRights = (LsaAddAccountRightsType)get_proc_address(hm, "LsaAddAccountRights")) == NULL)
@@ -196,4 +227,40 @@ NTSTATUS pLsaAddAccountRights(LSA_HANDLE lsa_h,
 	}
 	
 	return s_pLsaAddAccountRights(lsa_h, psid, rights, num_rights);
+}
+
+ULONG pLsaNtStatusToWinError(NTSTATUS status)
+{
+	HMODULE hm;
+	typedef ULONG(*LsaNtStatusToWinErrorType)(NTSTATUS);
+	static LsaNtStatusToWinErrorType s_pLsaNtStatusToWinError = NULL;
+
+	if (!s_pLsaNtStatusToWinError) {
+		if ((hm = load_api_security_lsapolicy()) == NULL &&
+			((hm = load_advapi32()) == NULL))
+			return STATUS_ASSERTION_FAILURE;
+
+		if ((s_pLsaNtStatusToWinError = (LsaNtStatusToWinErrorType)get_proc_address(hm, "LsaNtStatusToWinError")) == NULL)
+			return STATUS_ASSERTION_FAILURE;
+	}
+
+	return s_pLsaNtStatusToWinError(status);
+}
+
+NTSTATUS pLsaClose(LSA_HANDLE lsa_h)
+{
+	HMODULE hm;
+	typedef NTSTATUS(*LsaCloseType)(LSA_HANDLE);
+	static LsaCloseType s_pLsaClose = NULL;
+
+	if (!s_pLsaClose) {
+		if ((hm = load_api_security_lsapolicy()) == NULL &&
+			((hm = load_advapi32()) == NULL))
+			return STATUS_ASSERTION_FAILURE;
+
+		if ((s_pLsaClose = (LsaCloseType)get_proc_address(hm, "LsaClose")) == NULL)
+			return STATUS_ASSERTION_FAILURE;
+	}
+
+	return s_pLsaClose(lsa_h);
 }

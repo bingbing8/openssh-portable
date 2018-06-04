@@ -457,7 +457,7 @@ AddSidMappingToLsa(PUNICODE_STRING domain_name,
 	}
 
 	if (p_output)
-		LsaFreeMemory(p_output);
+		pLsaFreeMemory(p_output);
 
 	return ret;
 }
@@ -481,10 +481,9 @@ int RemoveVirtualAccountLSAMapping(PUNICODE_STRING domain_name,
 		&p_output);
 	if (status != STATUS_SUCCESS)
 		ret = -1;
-
-	/* TODO - Free p_output */
-	/*if (p_output)
-		LsaFreeMemory(p_output);*/
+		
+	if (p_output)
+		pLsaFreeMemory(p_output);
 
 	return ret;
 }
@@ -607,15 +606,15 @@ HANDLE generate_sshd_virtual_token()
 		NTSTATUS lsa_ret;
 
 		ZeroMemory(&ObjectAttributes, sizeof(ObjectAttributes));
-		if ((lsa_ret = LsaOpenPolicy(NULL, &ObjectAttributes,
+		if ((lsa_ret = pLsaOpenPolicy(NULL, &ObjectAttributes,
 		    POLICY_CREATE_ACCOUNT | POLICY_LOOKUP_NAMES, 
 		    &lsa_policy )) != STATUS_SUCCESS) {
-			error("%s: unable to open policy handle, error: %d", __FUNCTION__, LsaNtStatusToWinError(lsa_ret));
+			error("%s: unable to open policy handle, error: %d", __FUNCTION__, pLsaNtStatusToWinError(lsa_ret));
 			goto cleanup;
 		}
 		InitUnicodeString(&svcLogonRight, L"SeServiceLogonRight");
-		if ((lsa_ret = LsaAddAccountRights(lsa_policy, sid_user, &svcLogonRight, 1)) != STATUS_SUCCESS) {
-			error("%s: unable to assign SE_SERVICE_LOGON_NAME privilege, error: %d", __FUNCTION__, LsaNtStatusToWinError(lsa_ret));
+		if ((lsa_ret = pLsaAddAccountRights(lsa_policy, sid_user, &svcLogonRight, 1)) != STATUS_SUCCESS) {
+			error("%s: unable to assign SE_SERVICE_LOGON_NAME privilege, error: %d", __FUNCTION__, pLsaNtStatusToWinError(lsa_ret));
 			goto cleanup;
 		}
 	}
@@ -653,7 +652,7 @@ cleanup:
 	if (sid_group)
 		FreeSid(sid_group);
 	if (lsa_policy)
-		LsaClose(lsa_policy);
+		pLsaClose(lsa_policy);
 
 	return va_token_restricted;
 }
