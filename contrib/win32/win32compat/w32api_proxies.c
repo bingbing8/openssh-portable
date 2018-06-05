@@ -53,7 +53,7 @@ load_module(wchar_t* name)
 {
 	wchar_t module_path[MAX_PATH + 1];
 	wchar_t *system32_path;
-	HMODULE hm;
+	HMODULE hm = NULL;
 	
 	if ((system32_path = system32_dir()) == NULL)
 		return NULL;
@@ -98,7 +98,7 @@ load_api_security_lsapolicy()
 	static HMODULE s_hm_api_security_lsapolicy = NULL;
 
 	if (!s_hm_api_security_lsapolicy)
-		s_hm_api_security_lsapolicy = load_module(L"api-ms-win-security-lsapolicy-l1-1-0.dll");
+		s_hm_api_security_lsapolicy = load_module(L"downlevel\\api-ms-win-security-lsapolicy-l1-1-0.dll");
 
 	return s_hm_api_security_lsapolicy;
 }
