@@ -1601,7 +1601,7 @@ chroot(const char *path)
 	if (chroot_path[strlen(chroot_path) - 1] == '\\')
 		chroot_path[strlen(chroot_path) - 1] = '\0';
 
-	chroot_path_len = strlen(chroot_path);
+	chroot_path_len = (int)strlen(chroot_path);
 
 	if ((chroot_pathw = utf8_to_utf16(chroot_path)) == NULL) {
 		errno = ENOMEM;

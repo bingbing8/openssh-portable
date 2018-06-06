@@ -207,7 +207,7 @@ fileio_pipe(struct w32_io* pio[2], int duplex)
 
 	sec_attributes.bInheritHandle = TRUE;
 	sec_attributes.lpSecurityDescriptor = NULL;
-	sec_attributes.nLength = 0;
+	sec_attributes.nLength = sizeof(sec_attributes);
 
 	/* create named pipe */
 	write_handle = CreateNamedPipeA(pipe_name,
@@ -301,7 +301,6 @@ createFile_flags_setup(int flags, mode_t mode, struct createFile_flags* cf_flags
 	wchar_t sddl[SDDL_LENGTH + 1] = { 0 }, owner_ace[MAX_ACE_LENGTH + 1] = {0}, everyone_ace[MAX_ACE_LENGTH + 1] = {0};
 	wchar_t owner_access[MAX_ATTRIBUTE_LENGTH + 1] = {0}, everyone_access[MAX_ATTRIBUTE_LENGTH + 1] = {0}, *sid_utf16 = NULL;
 	PACL dacl = NULL;
-	struct passwd * pwd;
 	PSID owner_sid = NULL;
 
 	/*

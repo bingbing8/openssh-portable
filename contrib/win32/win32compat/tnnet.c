@@ -73,7 +73,7 @@ processBuffer(HANDLE handle, char *buf, size_t len, unsigned char **respbuf, siz
 			 * mitigate that issue we need to first move the visible window so that the cursor is at the top of the visible window.
 			 */
 			if (strstr(buf, clsSeq))
-				ConMoveCursorTopOfVisibleWindow();
+				ConMoveCursorTopOfVisibleWindow();			
 		}
 
 		if(len >= applicationModeSeqLen && strstr(buf, applicationModeSeq))
@@ -82,7 +82,7 @@ processBuffer(HANDLE handle, char *buf, size_t len, unsigned char **respbuf, siz
 			gbVTAppMode = false;
 
 		/* Console has the capability to parse so pass the raw buffer to console directly */
-		ConRestoreViewRect(); /* Restore the visible window, otherwise WriteConsoleW() gets messy */
+		//ConRestoreViewRect(); /* Restore the visible window, otherwise WriteConsoleW() gets messy */
 		wchar_t* t = utf8_to_utf16(buf);
 		if (t) {
 			WriteConsoleW(handle, t, (DWORD)wcslen(t), 0, 0);
