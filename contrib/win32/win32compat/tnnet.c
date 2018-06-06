@@ -87,7 +87,7 @@ processBuffer(HANDLE handle, char *buf, size_t len, unsigned char **respbuf, siz
 		if (t) {
 			WriteConsoleW(handle, t, (DWORD)wcslen(t), 0, 0);
 			free(t);
-		}		
+		}
 		
 		return;
 	}
