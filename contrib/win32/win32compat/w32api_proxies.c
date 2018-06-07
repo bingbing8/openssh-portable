@@ -50,20 +50,10 @@ system32_dir()
 
 static HMODULE 
 load_module(wchar_t* name)
-{
-	//wchar_t module_path[MAX_PATH + 1];
-	//wchar_t *system32_path;
+{	
 	HMODULE hm = NULL;
-	
-	/*if ((system32_path = system32_dir()) == NULL)
-		return NULL;
 
-	module_path[0] = L'\0';
-	if (wcscat_s(module_path, _countof(module_path), system32_path) != 0 ||
-	    wcscat_s(module_path, _countof(module_path), L"\\") != 0 ||
-	    wcscat_s(module_path, _countof(module_path), name) != 0)
-		return NULL;*/
-
+	/*system uses a standard search strategy to find the module */
 	if ((hm = LoadLibraryW(name)) == NULL)
 		debug3("unable to load module %ls at run time, error: %d", name, GetLastError());
 
@@ -193,7 +183,7 @@ NTSTATUS pLsaOpenPolicy(PLSA_UNICODE_STRING system_name,
 	if (!s_pLsaOpenPolicy) {
 		if ((hm = load_api_security_lsapolicy()) == NULL &&
 			((hm = load_advapi32()) == NULL))
-				return STATUS_ASSERTION_FAILURE;
+			return STATUS_ASSERTION_FAILURE;
 
 		if ((s_pLsaOpenPolicy = (LsaOpenPolicyType)get_proc_address(hm, "LsaOpenPolicy")) == NULL)
 			return STATUS_ASSERTION_FAILURE;
