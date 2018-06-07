@@ -153,7 +153,7 @@
     <ClCompile Include="$(OpenSSH-Src-Path)contrib\win32\win32compat\spawn-ext.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="conhost_conpty.c">
+    <ClCompile Include="$(OpenSSH-Src-Path)contrib\win32\win32compat\conhost_conpty.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

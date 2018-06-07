@@ -447,8 +447,7 @@ channel_close_fds(struct ssh *ssh, Channel *c)
 		channel_close_fd(ssh, &c->efd);
 #ifdef WINDOWS
 	if (c->conhost_pty_sighandle)
-		CloseHandle(c->conhost_pty_sighandle);
-		
+		CloseHandle(c->conhost_pty_sighandle);		
 #endif
 }
 
