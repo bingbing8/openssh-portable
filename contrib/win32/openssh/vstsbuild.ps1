@@ -28,8 +28,7 @@ function Get-RepoFork
     if (Test-Path -Path $repoLocalPath -PathType Container)
     {
         Remove-Item -Path $repoLocalPath -Recurse -Force
-    }   
-    
+    }    
 
     Write-Verbose "cloning -b $BranchName --recursive $AccountURL/$RepoFork $repoLocalPath" -Verbose
     git clone -b $BranchName --recursive $AccountURL/$RepoFork $repoLocalPath    
@@ -73,7 +72,10 @@ try
     {
         'Build' {
             $OpenSSHLocalPath = Join-Path -Path $gitRoot -ChildPath "$RepoFork"
-            Get-RepoFork -AccountURL $AccountURL -RepoFork $RepoFork -repoLocalPath $OpenSSHLocalPath -BranchName $BranchName
+            if($AccountURL.ToLower().Contains("https://github.com"))
+            {
+                Get-RepoFork -AccountURL $AccountURL -RepoFork $RepoFork -repoLocalPath $OpenSSHLocalPath -BranchName $BranchName
+            }
             Invoke-Build -RepoPath $OpenSSHLocalPath -BuildJsonPath '.\contrib\win32\openssh\build.json' -Name $Name
         }
         'packageSigned' {            
