@@ -561,8 +561,8 @@ HANDLE generate_sshd_virtual_token()
 	    0,
 	    0,
 	    &sid_domain))) {
-			debug3("AllocateAndInitializeSid failed with domain SID");
-			goto cleanup;
+		debug3("AllocateAndInitializeSid failed with domain SID");
+		goto cleanup;
 	}
 
 	/* group SID - S-1-5-111-0 */
@@ -577,8 +577,8 @@ HANDLE generate_sshd_virtual_token()
 	    0,
 	    0,
 	    &sid_group))) {
-			debug3("AllocateAndInitializeSid failed with group SID");
-			goto cleanup;
+		debug3("AllocateAndInitializeSid failed with group SID");
+		goto cleanup;
 	}
 
 	/* 
@@ -598,8 +598,8 @@ HANDLE generate_sshd_virtual_token()
 	    GetCurrentProcessId(),
 	    0,
 	    &sid_user))) {
-			debug3("AllocateAndInitializeSid failed with account SID");
-			goto cleanup;
+		debug3("AllocateAndInitializeSid failed with account SID");
+		goto cleanup;
 	}
 		
 
@@ -654,8 +654,8 @@ HANDLE generate_sshd_virtual_token()
 	    NULL,
 	    NULL,
 	    NULL)) {
-			debug3("LogonUserExExW failed with %d \n", GetLastError());
-			goto cleanup;
+		debug3("LogonUserExExW failed with %d \n", GetLastError());
+		goto cleanup;
 	}
 
 	/* remove all privileges */
