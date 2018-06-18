@@ -551,34 +551,34 @@ HANDLE generate_sshd_virtual_token()
 	/* Initialize SIDs */
 	/* domain SID - S-1-5-111 */
 	if (!(AllocateAndInitializeSid(&nt_authority,
-		1,
-		111,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		&sid_domain))) {
-		debug3("AllocateAndInitializeSid failed with domain SID");
-		goto cleanup;
+	    1,
+	    111,
+	    0,
+	    0,
+	    0,
+	    0,
+	    0,
+	    0,
+	    0,
+	    &sid_domain))) {
+			debug3("AllocateAndInitializeSid failed with domain SID");
+			goto cleanup;
 	}
 
 	/* group SID - S-1-5-111-0 */
 	if (!(AllocateAndInitializeSid(&nt_authority,
-		2,
-		111,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		&sid_group))) {
-		debug3("AllocateAndInitializeSid failed with group SID");
-		goto cleanup;
+	    2,
+	    111,
+	    0,
+	    0,
+	    0,
+	    0,
+	    0,
+	    0,
+	    0,
+	    &sid_group))) {
+			debug3("AllocateAndInitializeSid failed with group SID");
+			goto cleanup;
 	}
 
 	/* 
@@ -588,18 +588,18 @@ HANDLE generate_sshd_virtual_token()
 	 * Ex account SID - S-1-5-111-3847866527-469524349-687026318-516638107-1125189541-123
 	 */
 	if (!(AllocateAndInitializeSid(&nt_authority,
-		7,
-		111,
-		3847866527,
-		469524349,
-		687026318,
-		516638107,
-		1125189541,
-		GetCurrentProcessId(),
-		0,
-		&sid_user))) {
-		debug3("AllocateAndInitializeSid failed with account SID");
-		goto cleanup;
+	    7,
+	    111,
+	    3847866527,
+	    469524349,
+	    687026318,
+	    516638107,
+	    1125189541,
+	    GetCurrentProcessId(),
+	    0,
+	    &sid_user))) {
+			debug3("AllocateAndInitializeSid failed with account SID");
+			goto cleanup;
 	}
 		
 
@@ -654,8 +654,8 @@ HANDLE generate_sshd_virtual_token()
 	    NULL,
 	    NULL,
 	    NULL)) {
-		debug3("LogonUserExExW failed with %d \n", GetLastError());
-		goto cleanup;
+			debug3("LogonUserExExW failed with %d \n", GetLastError());
+			goto cleanup;
 	}
 
 	/* remove all privileges */
