@@ -168,7 +168,7 @@ ULONG pRtlNtStatusToDosError(NTSTATUS status)
 			return STATUS_ASSERTION_FAILURE;
 
 		if ((s_pRtlNtStatusToDosError = (RtlNtStatusToDosErrorType)get_proc_address(hm, "RtlNtStatusToDosError")) == NULL)
-			return STATUS_ASSERTION_FAILURE;		
+			return STATUS_ASSERTION_FAILURE;
 	}
 	return pRtlNtStatusToDosError(status);
 }
