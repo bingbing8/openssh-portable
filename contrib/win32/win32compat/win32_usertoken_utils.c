@@ -454,16 +454,16 @@ AddSidMappingToLsa(PUNICODE_STRING domain_name,
 			if (op_result == LsaSidNameMappingOperation_NameCollision || op_result == LsaSidNameMappingOperation_SidCollision)
 				ret = 0; /* OK as it failed due to collision */
 			else
-				error("LsaManageSidNameMapping failed with : %s \n", LSAMappingErrorDetails[op_result]);
+				error("LsaManageSidNameMapping failed with : %s", LSAMappingErrorDetails[op_result]);
 		}
 		else
-			error("LsaManageSidNameMapping failed with ntstatus: %d \n", status);
+			error("LsaManageSidNameMapping failed with ntstatus: %d", status);
 	}
 
 	if (p_output) {
 		status = LsaFreeMemory(p_output);
 		if (status != STATUS_SUCCESS)
-			debug3("LsaFreeMemory failed with ntstatus: %d \n", status);
+			debug3("LsaFreeMemory failed with ntstatus: %d", status);
 	}
 
 	return ret;
@@ -492,7 +492,7 @@ int RemoveVirtualAccountLSAMapping(PUNICODE_STRING domain_name,
 	if (p_output) {
 		status = LsaFreeMemory(p_output);
 		if (status != STATUS_SUCCESS)
-			debug3("LsaFreeMemory failed with ntstatus: %d \n", status);
+			debug3("LsaFreeMemory failed with ntstatus: %d", status);
 	}
 	return ret;
 }
@@ -654,13 +654,13 @@ HANDLE generate_sshd_virtual_token()
 	    NULL,
 	    NULL,
 	    NULL)) {
-		debug3("LogonUserExExW failed with %d \n", GetLastError());
+		debug3("LogonUserExExW failed with %d", GetLastError());
 		goto cleanup;
 	}
 
 	/* remove all privileges */
 	if (!CreateRestrictedToken(va_token, DISABLE_MAX_PRIVILEGE, 0, NULL, 0, NULL, 0, NULL, &va_token_restricted ))
-		debug3("CreateRestrictedToken failed with %d \n", GetLastError());
+		debug3("CreateRestrictedToken failed with %d", GetLastError());
 
 	CloseHandle(va_token);
 
