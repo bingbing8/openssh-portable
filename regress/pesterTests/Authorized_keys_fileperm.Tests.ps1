@@ -41,6 +41,7 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
     AfterEach { $tI++ }
     
     AfterAll {
+        $platform = Get-Platform
         if(($platform -eq [PlatformType]::Windows) -and ($psversiontable.BuildVersion.Major -le 6))
         {            
             netsh advfirewall firewall delete rule name="sshd" program="$($OpenSSHTestInfo['OpenSSHBinPath'])\sshd.exe" protocol=any dir=in
