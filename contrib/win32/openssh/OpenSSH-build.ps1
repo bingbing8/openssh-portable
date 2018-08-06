@@ -19,11 +19,11 @@ try
     $Bucket = "OpenSSH-$NativeHostArch"
     if($NativeHostArch -ieq 'x86') {
         $Bucket = "OpenSSH-Win32"
-		$UnitTestFolder = "Unittests-Win32"
+        $UnitTestFolder = "Unittests-Win32"
     }
     elseif($NativeHostArch -ieq 'x64') {
         $Bucket = "OpenSSH-Win64"
-		$UnitTestFolder = "Unittests-Win64"
+        $UnitTestFolder = "Unittests-Win64"
     }
     Write-Verbose "Start-OpenSSHBuild -NativeHostArch $NativeHostArch -Configuration $Configuration -NoOpenSSL:$NoOpenSSL -Onecore:$OneCore -Verbose " -Verbose
     Start-OpenSSHBuild -NativeHostArch $NativeHostArch -Configuration $Configuration -NoOpenSSL:$NoOpenSSL -Onecore:$OneCore -Verbose
