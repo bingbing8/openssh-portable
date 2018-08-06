@@ -15,7 +15,7 @@ try
 {
     Push-location $repolocation
     Import-Module "$repolocation\contrib\win32\openssh\OpenSSHBuildHelper.psm1" -Force
-	$UnitTestFolder = "Unittests-$NativeHostArch"
+    $UnitTestFolder = "Unittests-$NativeHostArch"
     $Bucket = "OpenSSH-$NativeHostArch"
     if($NativeHostArch -ieq 'x86') {
         $Bucket = "OpenSSH-Win32"
