@@ -21,23 +21,23 @@ if($override)
 {
     Remove-Item (join-path $destDir "LibreSSL") -Recurse -Force -ErrorAction SilentlyContinue
 }
-elseif (Test-Path (Join-Path $destDir "LibreSSL"))
+elseif (Test-Path (Join-Path $destDir "LibreSSL") -PathType Container)
 {
     return
 }
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor `
-                                                  [Net.SecurityProtocolType]::Tls11 -bor `
-                                                  [Net.SecurityProtocolType]::Tls
+                                              [Net.SecurityProtocolType]::Tls11 -bor `
+                                              [Net.SecurityProtocolType]::Tls
     
     $request = [System.Net.WebRequest]::Create($sourceUrl)
     $request.AllowAutoRedirect = $false
-    $request.Timeout = 60000; #30 sec
+    $request.Timeout = 60000; # 1 mins for the download to complete
     $response = $request.GetResponse()
     $release_url = $([String]$response.GetResponseHeader("Location")).Replace('tag','download') + '/LibreSSL.zip' 
     $zip_path = Join-Path $zipDir "libressl.zip"
 
-    #download libressl latest release binaries
+    # Download libressl latest release binaries
     Remove-Item $zip_path -Force -ErrorAction SilentlyContinue
     (New-Object System.Net.WebClient).DownloadFile($release_url, $zip_path)
     if(-not (Test-Path $zip_path))
@@ -45,7 +45,7 @@ elseif (Test-Path (Join-Path $destDir "LibreSSL"))
         throw "failed to download ssl zip file"
     }
     
-    #copy libressl
+    # Expand the zip file
     Expand-Archive -Path $zip_path -DestinationPath $destDir -Force -ErrorAction SilentlyContinue -ErrorVariable e
     if($e -ne $null)
     {
