@@ -1567,7 +1567,7 @@ cleanup:
 char* 
 build_session_commandline(const char *shell, const char* shell_arg, const char *command)
 {
-	enum sh_type { SH_OTHER, SH_CMD, SH_PS, SH_BASH } shell_type = SH_OTHER;
+	enum sh_type { SH_OTHER, SH_CMD, SH_PS, SH_BASH, SH_SHELLHOST} shell_type = SH_OTHER;
 	enum cmd_type { CMD_OTHER, CMD_SFTP, CMD_SCP } command_type = CMD_OTHER;
 	char *progdir = __progdir, *cmd_sp = NULL, *cmdline = NULL, *ret = NULL, *p;
 	int len, progdir_len = (int)strlen(progdir);
@@ -1583,9 +1583,11 @@ do {					\
 	if (strstr(shell, "system32\\cmd"))
 		shell_type = SH_CMD;
 	else if (strstr(shell, "powershell"))
-		shell_type = SH_PS;
+		shell_type = SH_PS;	
 	else if (strstr(shell, "\\bash"))
 		shell_type = SH_BASH;
+	else if (strstr(shell, "ssh-shellhost"))
+		shell_type = SH_SHELLHOST;
 
 	/* special case where incoming command needs to be adjusted */
 	do {
@@ -1594,27 +1596,6 @@ do {					\
 		* we want to launch scp and sftp executables from the same binary directory
 		* that sshd is hosted in. This will facilitate hosting and evaluating
 		* multiple versions of OpenSSH at the same time.
-		*
-		* currently we can only accomodate this for cmd.exe, since cmd.exe simply executes 
-		* its commandline without applying CRT or shell specific rules
-		*
-		* Ex.
-		* this works
-		*	cmd /c "c:\program files\sftp" -d
-		* this following wouldn't work in powershell, cygwin's or WSL bash unless we put
-		* some shell specific rules 
-		*	powershell -c "c:\program files\scp" -t
-		*	cygwin\bash -c "c:\program files\scp" -t
-		*	bash -c "c:\program files\scp" -t
-		* 
-		* for now, for all non-cmd shells, we launch scp and sftp-server directly -
-		*	shell -c "scp.exe -t"
-		* note that .exe extension and case matters for WSL bash
-		* note that double quotes matter for WSL and Cygwin bash, they dont matter for PS
-		*
-		* consequence - 
-		* for non-cmd shells - sftp and scp installation path is expected to be in machine wide PATH
-		* 
 		*/
 
 		int command_len;
@@ -1658,23 +1639,14 @@ do {					\
 		}
 
 		p = cmd_sp;
+		CMDLINE_APPEND(p, "\"");
+		CMDLINE_APPEND(p, progdir);
 
-		if (shell_type == SH_CMD) {
-			CMDLINE_APPEND(p, "\"");
-			CMDLINE_APPEND(p, progdir);
-
-			if (command_type == CMD_SCP)
-				CMDLINE_APPEND(p, "\\scp.exe\"");
-			else
-				CMDLINE_APPEND(p, "\\sftp-server.exe\"");
-
-		} else {
-			if (command_type == CMD_SCP)
-				CMDLINE_APPEND(p, "scp.exe");
-			else
-				CMDLINE_APPEND(p, "sftp-server.exe");
-		}
-
+		if (command_type == CMD_SCP)
+			CMDLINE_APPEND(p, "\\scp.exe\"");
+		else
+			CMDLINE_APPEND(p, "\\sftp-server.exe\"");
+		
 		CMDLINE_APPEND(p, command_args);
 		*p = '\0';
 		command = cmd_sp;
@@ -1685,6 +1657,16 @@ do {					\
 	if (command) {
 		len += 15; /* for shell command argument, typically -c or /c */
 		len += (int)strlen(command) + 5; /* 5 for possible " around command and null term*/
+
+		/* count # of occurrences of backslash and double quotes in command */
+		if (shell_type != SH_CMD && shell_type != SH_SHELLHOST ) {
+			for (int i = 0; i < strlen(command); i++) {
+				if (command[i] == '\\')
+					len++; /* another backslash will added for every backslash.*/
+				else if (command[i] == '\"')
+					len++; /* backslash will be added for every double quote.*/
+			}
+		}
 	}
 	
 	if ((cmdline = malloc(len)) == NULL) {
@@ -1707,9 +1689,29 @@ do {					\
 		else
 			CMDLINE_APPEND(p, " -c ");
 
-		/* Add double quotes around command */		
+		/* Add double quotes around command */
 		CMDLINE_APPEND(p, "\"");
-		CMDLINE_APPEND(p, command);
+		if (shell_type != SH_CMD && shell_type != SH_SHELLHOST) {
+			/* Escape the double quotes and backslash as per CRT rules.*/
+			for (int i = 0; i < strlen(command); i++) {
+				if (command[i] == '\\') {
+					/* add another backslash for every backslash . */
+					CMDLINE_APPEND(p, "\\");
+					CMDLINE_APPEND(p, "\\");
+				}
+				else if (command[i] == '\"') {
+					/* Add backslash for every double quote.*/
+					CMDLINE_APPEND(p, "\\");
+					CMDLINE_APPEND(p, "\"");
+				}
+				else {
+					*p++ = command[i];
+				}
+			}
+		}
+		else {
+			CMDLINE_APPEND(p, command);
+		}
 		CMDLINE_APPEND(p, "\"");
 	}
 	*p = '\0';
@@ -1720,6 +1722,6 @@ done:
 		free(cmd_sp);
 	if (cmdline)
 		free(cmdline);
-
+	
 	return ret;
 }
