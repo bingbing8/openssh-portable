@@ -312,9 +312,36 @@ test_chroot()
 }
 
 void
+escape_chars(char * buf)
+{	
+	int len = 0;
+	for (int i = 0; i < strlen(buf); i++) {
+		len++;
+		if (buf[i] == '\\')
+			len++;
+		else if (buf[i] == '\"')
+			len++;
+	}
+	buf[len] = '\0';
+	char * p = buf + len - 1;
+	for (int i = strlen(buf) - 1; i >= 0 ; i--) {
+		if (buf[i] == '\\') {
+			*p-- = '\\';
+			*p-- = '\\';
+		}
+		else if (buf[i] == '\"') {
+			*p-- = '\"';
+			*p-- = '\\';
+		}
+		else
+			*p-- = buf[i];
+	}
+}
+
+void
 test_build_session_commandline()
 {
-	char *progdir = __progdir, *out, buf[PATH_MAX * 2];
+	char *progdir = __progdir, *out, *tmp[PATH_MAX],buf[PATH_MAX * 2], *start_escape;
 
 	TEST_START("default interactive session tests");
 	out = build_session_commandline("c:\\system32\\cmd.exe", NULL, NULL);
@@ -322,84 +349,170 @@ test_build_session_commandline()
 	TEST_DONE();
 
 	TEST_START("cmd shell tests");
-	buf[0] = '\0';
-	strcat(buf, "\"c:\\system32\\cmd.exe\" /c \"\"");
+	strcpy(buf, "\"c:\\system32\\cmd.exe\" /c \"\"");
 	strcat(buf, progdir);
-	int len_pg = strlen(buf);
+	strcpy(tmp, buf);
 	out = build_session_commandline("c:\\system32\\cmd.exe", NULL, "internal-sftp -arg");
-	buf[len_pg] = '\0';
 	strcat(buf, "\\sftp-server.exe\" -arg\"");
 	ASSERT_STRING_EQ(out, buf);
+	strcpy(buf, tmp);
 	out = build_session_commandline("c:\\system32\\cmd.exe", NULL, "SFTP-server.exe -arg");
-	buf[len_pg] = '\0';
 	strcat(buf, "\\sftp-server.exe\" -arg\"");
 	ASSERT_STRING_EQ(out, buf);
+	strcpy(buf, tmp);
 	out = build_session_commandline("c:\\system32\\cmd.exe", NULL, "sftp-SERVER -arg");
-	buf[len_pg] = '\0';
 	strcat(buf, "\\sftp-server.exe\" -arg\"");
 	ASSERT_STRING_EQ(out, buf);
 	out = build_session_commandline("c:\\system32\\cmd.exe", NULL, "sCp -arg");
-	buf[len_pg] = '\0';
+	strcpy(buf, tmp);
 	strcat(buf, "\\scp.exe\" -arg\"");
 	ASSERT_STRING_EQ(out, buf);
 	free(out);
 	TEST_DONE();
 	
 	TEST_START("bash shell tests");
+	strcpy(buf, "\"c:\\system32\\bash.exe\" -c \"");
+	start_escape = buf + strlen(buf);
+	strcat(buf, "\"");
+	strcat(buf, progdir);
 	out = build_session_commandline("c:\\system32\\bash.exe", NULL, "internal-sftp -arg");
-	ASSERT_STRING_EQ(out, "\"c:\\system32\\bash.exe\" -c \"sftp-server.exe -arg\"");
+	strcat(buf , "\\sftp-server.exe\" -arg");
+	escape_chars(start_escape);
+	strcat(buf, "\"");
+	ASSERT_STRING_EQ(out, buf);
 	free(out);
+	strcpy(buf, "\"c:\\system32\\bash\" -c \"");
+	start_escape = buf + strlen(buf);
+	strcat(buf, "\"");
+	strcat(buf, progdir);
+	strcpy(tmp, buf);
 	out = build_session_commandline("c:\\system32\\bash", NULL, "internal-sftp -arg");
-	ASSERT_STRING_EQ(out, "\"c:\\system32\\bash\" -c \"sftp-server.exe -arg\"");
+	strcat(buf, "\\sftp-server.exe\" -arg");
+	escape_chars(start_escape);
+	strcat(buf, "\"");
+	ASSERT_STRING_EQ(out, buf);
 	free(out);
+	strcpy(buf, tmp);
 	out = build_session_commandline("c:\\system32\\bash", NULL, "sFTP-server -arg");
-	ASSERT_STRING_EQ(out, "\"c:\\system32\\bash\" -c \"sftp-server.exe -arg\"");
+	strcat(buf, "\\sftp-server.exe\" -arg");
+	escape_chars(start_escape);
+	strcat(buf, "\"");
+	ASSERT_STRING_EQ(out, buf);
 	free(out);
+	strcpy(buf, tmp);
 	out = build_session_commandline("c:\\system32\\bash", NULL, "scP -arg");
-	ASSERT_STRING_EQ(out, "\"c:\\system32\\bash\" -c \"scp.exe -arg\"");
+	strcat(buf, "\\scp.exe\" -arg");
+	escape_chars(start_escape);
+	strcat(buf, "\"");
+	ASSERT_STRING_EQ(out, buf);
 	free(out);
-	out = build_session_commandline("c:\\cygwin\\bash.exe", NULL, "internal-sftp -arg");
-	ASSERT_STRING_EQ(out, "\"c:\\cygwin\\bash.exe\" -c \"sftp-server.exe -arg\"");
+	strcpy(buf, "\"c:\\cygwin\\bash\" -c \"");
+	start_escape = buf + strlen(buf);
+	strcat(buf, "\"");
+	strcat(buf, progdir);
+	strcpy(tmp, buf);
+	out = build_session_commandline("c:\\cygwin\\bash", NULL, "internal-sftp -arg");
+	strcat(buf, "\\sftp-server.exe\" -arg");
+	escape_chars(start_escape);
+	strcat(buf, "\"");
+	ASSERT_STRING_EQ(out, buf);
 	free(out);
+	strcpy(buf, tmp);
 	out = build_session_commandline("c:\\cygwin\\bash", NULL, "sftp-server -arg");
-	ASSERT_STRING_EQ(out, "\"c:\\cygwin\\bash\" -c \"sftp-server.exe -arg\"");
+	strcat(buf, "\\sftp-server.exe\" -arg");
+	escape_chars(start_escape);
+	strcat(buf, "\"");
+	ASSERT_STRING_EQ(out, buf);	
 	free(out);
+	strcpy(buf, tmp);
 	out = build_session_commandline("c:\\cygwin\\bash", NULL, "sftp-seRVer.exe -arg");
-	ASSERT_STRING_EQ(out, "\"c:\\cygwin\\bash\" -c \"sftp-server.exe -arg\"");
+	strcat(buf, "\\sftp-server.exe\" -arg");
+	escape_chars(start_escape);
+	strcat(buf, "\"");
+	ASSERT_STRING_EQ(out, buf);
 	free(out);
+	strcpy(buf, tmp);
 	out = build_session_commandline("c:\\cygwin\\bash", NULL, "sCp -arg");
-	ASSERT_STRING_EQ(out, "\"c:\\cygwin\\bash\" -c \"scp.exe -arg\"");
+	strcat(buf, "\\scp.exe\" -arg");
+	escape_chars(start_escape);
+	strcat(buf, "\"");
+	ASSERT_STRING_EQ(out, buf);
 	free(out);
 	TEST_DONE();
 
 	TEST_START("powershell shell tests");
+	strcpy(buf, "\"c:\\powershell.exe\" -c \"");
+	start_escape = buf + strlen(buf);
+	strcat(buf, "\"");
+	strcat(buf, progdir);
+	strcpy(tmp, buf);
 	out = build_session_commandline("c:\\powershell.exe", NULL, "internal-sftp -arg");
-	ASSERT_STRING_EQ(out, "\"c:\\powershell.exe\" -c \"sftp-server.exe -arg\"");
+	strcat(buf, "\\sftp-server.exe\" -arg");
+	escape_chars(start_escape);
+	strcat(buf, "\"");
+	ASSERT_STRING_EQ(out, buf);
 	free(out);
-	out = build_session_commandline("c:\\powershell", NULL, "sftp-server -arg");
-	ASSERT_STRING_EQ(out, "\"c:\\powershell\" -c \"sftp-server.exe -arg\"");
-	free(out);
+	strcpy(buf, tmp);
 	out = build_session_commandline("c:\\powershell.exe", NULL, "sftp-sERver.exe -arg");
-	ASSERT_STRING_EQ(out, "\"c:\\powershell.exe\" -c \"sftp-server.exe -arg\"");
+	strcat(buf, "\\sftp-server.exe\" -arg");
+	escape_chars(start_escape);
+	strcat(buf, "\"");
+	ASSERT_STRING_EQ(out, buf);
 	free(out);
+	strcpy(buf, tmp);
 	out = build_session_commandline("c:\\powershell.exe", NULL, "scP -arg");
-	ASSERT_STRING_EQ(out, "\"c:\\powershell.exe\" -c \"scp.exe -arg\"");
+	strcat(buf, "\\scp.exe\" -arg");
+	escape_chars(start_escape);
+	strcat(buf, "\"");
+	ASSERT_STRING_EQ(out, buf);
+	free(out);
+	strcpy(buf, "\"c:\\powershell\" -c \"");
+	start_escape = buf + strlen(buf);
+	strcat(buf, "\"");
+	strcat(buf, progdir);
+	out = build_session_commandline("c:\\powershell", NULL, "sftp-server -arg");
+	strcat(buf, "\\sftp-server.exe\" -arg");
+	escape_chars(start_escape);
+	strcat(buf, "\"");
+	ASSERT_STRING_EQ(out, buf);
 	free(out);
 	TEST_DONE();
 
-
 	TEST_START("other shell tests");
+	strcpy(buf, "\"c:\\myshell.exe\" -c \"");
+	start_escape = buf + strlen(buf);
+	strcat(buf, "\"");
+	strcat(buf, progdir);
 	out = build_session_commandline("c:\\myshell.exe", NULL, "internal-sftp -arg");
-	ASSERT_STRING_EQ(out, "\"c:\\myshell.exe\" -c \"sftp-server.exe -arg\"");
+	strcat(buf, "\\sftp-server.exe\" -arg");
+	escape_chars(start_escape);
+	strcat(buf, "\"");
+	ASSERT_STRING_EQ(out, buf);
 	free(out);
+	strcpy(buf, "\"c:\\myshell\" -c \"");
+	start_escape = buf + strlen(buf);
+	strcat(buf, "\"");
+	strcat(buf, progdir);
+	strcpy(tmp, buf);
 	out = build_session_commandline("c:\\myshell", NULL, "sftp-server -arg");
-	ASSERT_STRING_EQ(out, "\"c:\\myshell\" -c \"sftp-server.exe -arg\"");
+	strcat(buf, "\\sftp-server.exe\" -arg");
+	escape_chars(start_escape);
+	strcat(buf, "\"");
+	ASSERT_STRING_EQ(out, buf);
 	free(out);
+	strcpy(buf, tmp);
 	out = build_session_commandline("c:\\myshell", NULL, "sftp-seRVer.exe -arg");
-	ASSERT_STRING_EQ(out, "\"c:\\myshell\" -c \"sftp-server.exe -arg\"");
+	strcat(buf, "\\sftp-server.exe\" -arg");
+	escape_chars(start_escape);
+	strcat(buf, "\"");
+	ASSERT_STRING_EQ(out, buf);
 	free(out);
+	strcpy(buf, tmp);
 	out = build_session_commandline("c:\\myshell", NULL, "sCp -arg");
-	ASSERT_STRING_EQ(out, "\"c:\\myshell\" -c \"scp.exe -arg\"");
+	strcat(buf, "\\scp.exe\" -arg");
+	escape_chars(start_escape);
+	strcat(buf, "\"");
+	ASSERT_STRING_EQ(out, buf);
 	free(out);
 	TEST_DONE();
 }
