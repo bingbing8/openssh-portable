@@ -1710,9 +1710,8 @@ do {					\
 					*p++ = command[i];
 			}
 		}
-		else {
+		else
 			CMDLINE_APPEND(p, command);
-		}
 		CMDLINE_APPEND(p, "\"");
 	}
 	*p = '\0';
