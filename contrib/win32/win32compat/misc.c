@@ -1567,7 +1567,7 @@ cleanup:
 char* 
 build_session_commandline(const char *shell, const char* shell_arg, const char *command)
 {
-	enum sh_type { SH_OTHER, SH_CMD, SH_PS, SH_BASH, SH_SHELLHOST} shell_type = SH_OTHER;
+	enum sh_type { SH_OTHER, SH_CMD, SH_PS, SH_BASH, SH_CYGWIN, SH_SHELLHOST} shell_type = SH_OTHER;
 	enum cmd_type { CMD_OTHER, CMD_SFTP, CMD_SCP } command_type = CMD_OTHER;
 	char *progdir = __progdir, *cmd_sp = NULL, *cmdline = NULL, *ret = NULL, *p;
 	int len, progdir_len = (int)strlen(progdir);
@@ -1586,6 +1586,8 @@ do {					\
 		shell_type = SH_PS;
 	else if (strstr(shell, "\\bash"))
 		shell_type = SH_BASH;
+	else if (strstr(shell, "cygwin")) 
+		shell_type = SH_CYGWIN;
 	else if (strstr(shell, "ssh-shellhost"))
 		shell_type = SH_SHELLHOST;
 
@@ -1704,9 +1706,8 @@ do {					\
 					CMDLINE_APPEND(p, "\\");
 					CMDLINE_APPEND(p, "\"");
 				}
-				else {
+				else 
 					*p++ = command[i];
-				}
 			}
 		}
 		else {
@@ -1722,5 +1723,6 @@ done:
 		free(cmd_sp);
 	if (cmdline)
 		free(cmdline);
+
 	return ret;
 }
