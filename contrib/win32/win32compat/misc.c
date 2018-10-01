@@ -1583,7 +1583,7 @@ do {					\
 	if (strstr(shell, "system32\\cmd"))
 		shell_type = SH_CMD;
 	else if (strstr(shell, "powershell"))
-		shell_type = SH_PS;	
+		shell_type = SH_PS;
 	else if (strstr(shell, "\\bash"))
 		shell_type = SH_BASH;
 	else if (strstr(shell, "ssh-shellhost"))
@@ -1722,6 +1722,5 @@ done:
 		free(cmd_sp);
 	if (cmdline)
 		free(cmdline);
-	
 	return ret;
 }
