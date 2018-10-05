@@ -1027,7 +1027,7 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 	char * const *t1;
 	DWORD cmdline_len = 0;
 	wchar_t * cmdline_utf16 = NULL;
-	int add_module_path = 0, ret = -1;
+	int add_module_path = 0, ret = -1, num;
 
 	/* should module path be added */
 	if (!cmd) {
@@ -1047,8 +1047,37 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 
 	if (argv) {
 		t1 = argv;
-		while (*t1)
-			cmdline_len += (DWORD)strlen(*t1++) + 1 + 2;
+		while (*t1) {
+			char *p = *t1++;
+			convertToBackslash(p);
+			for (int i = 0; i < (int)strlen(p); i++) {
+				if (p[i] == '\\') {
+					char * backslash = p + i;
+					int addition_backslash = 0;
+					int backslash_count = 0;
+					/*
+					Backslashes are interpreted literally, unless they immediately
+					precede a double quotation mark.
+					*/
+					while (*backslash == '\\') {
+						if (*(backslash + 1) == '\"') {
+							addition_backslash = 1;
+							break;
+						}
+						backslash_count++;
+						backslash++;
+					}
+					cmdline_len += backslash_count * (addition_backslash + 1);
+					i += backslash_count - 1;
+				}
+				else if (p[i] == '\"')
+					/* backslash will be added for every double quote.*/
+					cmdline_len += 2;
+				else
+					cmdline_len++;
+			}
+			cmdline_len += 1 + 2; /*for "around cmd arg and traling space*/
+		}
 	}
 
 	if ((cmdline = malloc(cmdline_len)) == NULL) {
@@ -1058,32 +1087,53 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 
 	/* add current module path to start if needed */
 	t = cmdline;
-	if (argv && argv[0])
-		*t++ = '\"';
-	if (add_module_path) {
-		memcpy(t, __progdir, strlen(__progdir));
-		t += strlen(__progdir);
-		*t++ = '\\';
+	memset(cmdline, '\0',cmdline_len );
+	num = sprintf_s(cmdline, cmdline_len, "\"%s%s%s\"", add_module_path ? __progdir : "", add_module_path ? "\\":"", cmd);
+	if (num == -1) {
+		errno = ENOMEM;
+		goto cleanup;
 	}
-
-	memcpy(t, cmd, strlen(cmd));
-	t += strlen(cmd);
-
-	if (argv && argv[0])
-		*t++ = '\"';
+	t = cmdline + strlen(cmdline);
 
 	if (argv) {
 		t1 = argv;
 		while (*t1) {
 			*t++ = ' ';
 			*t++ = '\"';
-			memcpy(t, *t1, strlen(*t1));
-			t += strlen(*t1);
+			char * p1 = *t1++;
+			int i = 0;
+			for (int i = 0; i < (int)strlen(p1); i++) {
+				if (p1[i] == '\\') {
+					char * backslash = p1 + i;
+					int addition_backslash = 0;
+					int backslash_count = 0;
+					/*
+					  Backslashes are interpreted literally, unless they immediately 
+					  precede a double quotation mark.
+					*/
+					while (backslash != NULL && *backslash == '\\') {
+						if ((backslash + 1 ) != NULL && *(backslash + 1) == '\"') {
+							addition_backslash = 1;
+							break;
+						}
+						backslash_count++;
+						backslash++;
+					}
+					i += backslash_count - 1;
+					while ((backslash_count--) * (addition_backslash + 1))
+						*t++ = '\\';
+				}
+				else if (p1[i] == '\"') {
+					/* Add backslash for every double quote.*/
+					*t++ = '\\';
+					*t++ = '\"';
+				}
+				else
+					*t++ = p1[i];
+			}
 			*t++ = '\"';
-			t1++;
 		}
 	}
-
 	*t = '\0';
 
 	if ((cmdline_utf16 = utf8_to_utf16(cmdline)) == NULL) {
@@ -1097,8 +1147,6 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 	si.hStdOutput = out;
 	si.hStdError = err;
 	si.dwFlags = STARTF_USESTDHANDLES;
-
-	debug3("spawning %ls", cmdline_utf16);
 	
 	if (as_user)
 		b = CreateProcessAsUserW(as_user, NULL, cmdline_utf16, NULL, NULL, TRUE, flags, NULL, NULL, &si, &pi);
@@ -1273,7 +1321,7 @@ posix_spawn_internal(pid_t *pidp, const char *path, const posix_spawn_file_actio
 	for (i = 0; i < file_actions->num_aux_fds; i++) {
 		aux_handles[i] = dup_handle(file_actions->aux_fds_info.parent_fd[i]);
 		if (aux_handles[i] == NULL) 
-			goto cleanup;		
+			goto cleanup;
 	}
 
 	/* set fd info */

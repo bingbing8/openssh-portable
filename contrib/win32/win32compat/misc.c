@@ -1634,6 +1634,8 @@ do {					\
 		len = 0;
 		len += progdir_len + 4; /* account for " around */
 		len += command_len + 4; /* account for possible .exe addition */
+		if (shell_type == SH_PS)
+			len += 2; /*account for "& "*/
 
 		if ((cmd_sp = malloc(len)) == NULL) {
 			errno = ENOMEM;
@@ -1641,6 +1643,8 @@ do {					\
 		}
 
 		p = cmd_sp;
+		if(shell_type == SH_PS)
+			CMDLINE_APPEND(p, "& ");
 		CMDLINE_APPEND(p, "\"");
 		CMDLINE_APPEND(p, progdir);
 
@@ -1653,7 +1657,7 @@ do {					\
 		*p = '\0';
 		command = cmd_sp;
 	} while (0);
-
+	debug3("before escape: %s", command);
 	len = 0;
 	len +=(int) strlen(shell) + 3;/* 3 for " around shell path and trailing space */
 	if (command) {
@@ -1663,8 +1667,25 @@ do {					\
 		/* count # of occurrences of backslash and double quotes in command */
 		if (shell_type != SH_CMD && shell_type != SH_SHELLHOST ) {
 			for (int i = 0; i < strlen(command); i++) {
-				if (command[i] == '\\')
-					len++; /* another backslash will added for every backslash.*/
+				if (command[i] == '\\') {
+					char * backslash = command + i;
+					int addition_backslash = 0;
+					int backslash_count = 0;
+					/*
+					Backslashes are interpreted literally, unless they immediately
+					precede a double quotation mark.
+					*/
+					while (backslash != NULL && *backslash == '\\') {
+						if ((backslash + 1) != NULL && *(backslash + 1) == '\"') {
+							addition_backslash = 1;
+							break;
+						}
+						backslash_count++;
+						backslash++;
+					}
+					len += backslash_count * addition_backslash;
+					i += backslash_count - 1;
+				}
 				else if (command[i] == '\"')
 					len++; /* backslash will be added for every double quote.*/
 			}
@@ -1690,16 +1711,30 @@ do {					\
 			CMDLINE_APPEND(p, " /c ");
 		else
 			CMDLINE_APPEND(p, " -c ");
-
 		/* Add double quotes around command */
 		CMDLINE_APPEND(p, "\"");
 		if (shell_type != SH_CMD && shell_type != SH_SHELLHOST) {
 			/* Escape the double quotes and backslash as per CRT rules.*/
-			for (int i = 0; i < strlen(command); i++) {
+			for (int i = 0; i < (int)strlen(command); i++) {
 				if (command[i] == '\\') {
-					/* add another backslash for every backslash . */
-					CMDLINE_APPEND(p, "\\");
-					CMDLINE_APPEND(p, "\\");
+					char * backslash = command + i;
+					int addition_backslash = 0;
+					int backslash_count = 0;
+					/*
+					Backslashes are interpreted literally, unless they immediately
+					precede a double quotation mark.
+					*/
+					while (backslash != NULL && *backslash == '\\') {
+						if ((backslash + 1) != NULL && *(backslash + 1) == '\"') {
+							addition_backslash = 1;
+							break;
+						}
+						backslash_count++;
+						backslash++;
+					}
+					i += backslash_count - 1;
+					while ((backslash_count--) * (addition_backslash + 1))
+						CMDLINE_APPEND(p, "\\");
 				}
 				else if (command[i] == '\"') {
 					/* Add backslash for every double quote.*/
