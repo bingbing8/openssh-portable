@@ -910,7 +910,7 @@ realpath(const char *inputpath, char resolved[PATH_MAX])
 
 	if (is_win_path) {
 		if (_strnicmp(inputpath, PROGRAM_DATA, strlen(PROGRAM_DATA)) == 0) {
-			strcat_s(path, PATH_MAX, __progdata);
+			strcpy_s(path, PATH_MAX, __progdata);
 			strcat_s(path, PATH_MAX, &inputpath[strlen(PROGRAM_DATA)]);
 		} else {
 			memcpy_s(path, PATH_MAX, inputpath, strlen(inputpath));
@@ -1655,28 +1655,27 @@ do {					\
 		len = 0;
 		len += progdir_len + 4; /* account for " around */
 		len += command_len + 4; /* account for possible .exe addition */
-		if (shell_type == SH_PS)
-			len += 2; /*account for "& "*/
-
 		if ((cmd_sp = malloc(len)) == NULL) {
 			errno = ENOMEM;
 			goto done;
 		}
 
 		p = cmd_sp;
-		if(shell_type == SH_PS)
-			CMDLINE_APPEND(p, "& ");
-		CMDLINE_APPEND(p, "\"");
-		CMDLINE_APPEND(p, progdir);
 		if (command_type == CMD_SCP)
-			CMDLINE_APPEND(p, "\\scp.exe\"");
+			CMDLINE_APPEND(p, "scp.exe");
 		else
-			CMDLINE_APPEND(p, "\\sftp-server.exe\"");
+			CMDLINE_APPEND(p, "sftp-server.exe");		
+
+		if (shell_type == SH_CYGWIN) {
+			*p = '\0';
+			convertToForwardslash(cmd_sp);
+		}
+
 		CMDLINE_APPEND(p, command_args);
 		*p = '\0';
 		command = cmd_sp;
 	} while (0);
-	debug3("before escape: %s", command);
+
 	len = 0;
 	len +=(int) strlen(shell) + 3;/* 3 for " around shell path and trailing space */
 	if (command) {
@@ -1802,14 +1801,14 @@ bash_to_win_path(const char *in, char *out, const size_t out_len)
 {
 	int retVal = 0;
 	const size_t cygwin_path_prefix_len = strlen(CYGWIN_PATH_PREFIX);
+	memset(out, 0, out_len);
 	if (_strnicmp(in, CYGWIN_PATH_PREFIX, cygwin_path_prefix_len) == 0) {
-		memset(out, 0, out_len);
 		out[0] = in[cygwin_path_prefix_len];
 		out[1] = ':';
 		strcat_s(out, out_len, &in[cygwin_path_prefix_len + 1]);
 		retVal = 1;
 	} else {
-		strcat_s(out, out_len, in);
+		strcpy_s(out, out_len, in);
 	}
 
 	return retVal;

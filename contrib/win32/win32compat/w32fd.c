@@ -1041,7 +1041,6 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 	DWORD cmdline_len = 0;
 	wchar_t * cmdline_utf16 = NULL;
 	int add_module_path = 0, ret = -1, num;
-	int add_module_path = 0, ret = -1;
 	char *path = NULL;
 
 	if (!cmd) {
@@ -1074,7 +1073,6 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 		t1 = argv;
 		while (*t1) {
 			char *p = *t1++;
-			convertToBackslash(p);
 			for (int i = 0; i < (int)strlen(p); i++) {
 				if (p[i] == '\\') {
 					char * backslash = p + i;
