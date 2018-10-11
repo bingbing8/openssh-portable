@@ -632,7 +632,8 @@ int do_exec_windows(struct ssh *ssh, Session *s, const char *command, int pty) {
 			goto cleanup;
 		} 
 		if (posix_spawn(&pid, spawn_argv[0], &actions, NULL, spawn_argv, NULL) != 0) {
-			error("spawn_child_internal: %s", strerror(errno));
+			errno = EOTHER;
+			error("spawn_child_internal: %s", strerror(errno));			
 			goto cleanup;
 		}
 		posix_spawn_file_actions_destroy(&actions);
@@ -641,9 +642,9 @@ int do_exec_windows(struct ssh *ssh, Session *s, const char *command, int pty) {
 	memset(&job_info, 0, sizeof(JOBOBJECT_EXTENDED_LIMIT_INFORMATION));
 	job_info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE | JOB_OBJECT_LIMIT_BREAKAWAY_OK;
 
-	if((process_handle = OpenProcess(PROCESS_ALL_ACCESS | PROCESS_DUP_HANDLE | PROCESS_SET_QUOTA | PROCESS_TERMINATE | CREATE_BREAKAWAY_FROM_JOB, FALSE, pid)) == NULL) {
-		error("cannot get process handle: %d", GetLastError());
+	if((process_handle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid)) == NULL) {
 		errno = EOTHER;
+		error("cannot get process handle: %d", GetLastError());
 		goto cleanup;
 	}
 
@@ -654,25 +655,11 @@ int do_exec_windows(struct ssh *ssh, Session *s, const char *command, int pty) {
 		* 3. duplicate job handle into child so it would be the last to close it
 		*/
 	if ((job = CreateJobObjectW(NULL, NULL)) == NULL ||
-		!SetInformationJobObject(job, JobObjectExtendedLimitInformation, &job_info, sizeof(job_info))) {
-			error("SetInformationJobObject failed: %d", GetLastError());
-			errno = EOTHER;
-			TerminateProcess(process_handle, 255);
-			goto cleanup;
-		}
-	
-	if (!AssignProcessToJobObject(job, process_handle)) {
-		DWORD last = GetLastError();
-		debug("AssignProcessToJobObject failed: %d", last);
+		!SetInformationJobObject(job, JobObjectExtendedLimitInformation, &job_info, sizeof(job_info)) ||
+		!AssignProcessToJobObject(job, process_handle) ||
+		!DuplicateHandle(GetCurrentProcess(), job, process_handle, &job_dup, 0, FALSE, DUPLICATE_SAME_ACCESS)) {
 		errno = EOTHER;
-		TerminateProcess(process_handle, 255);
-		goto cleanup;
-	}
-		
-	 if(!DuplicateHandle(GetCurrentProcess(), job, process_handle, &job_dup, 0, FALSE, DUPLICATE_SAME_ACCESS)) {
-		DWORD last = GetLastError();
-		debug("DuplicateHandle failed: %d", last);
-		errno = EOTHER;
+		error("cannot associate job object: %d", GetLastError());
 		TerminateProcess(process_handle, 255);
 		goto cleanup;
 	}
