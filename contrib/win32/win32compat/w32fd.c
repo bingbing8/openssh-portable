@@ -1052,7 +1052,7 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 		error("failed to duplicate %s", cmd);
 		return ret;
 	}
-	
+
 	if (is_bash_test_env()) {
 		size_t len = strlen(path) + 1;
 		memset(path, 0, len);
@@ -1110,8 +1110,8 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 
 	/* add current module path to start if needed */
 	t = cmdline;
-	memset(cmdline, '\0',cmdline_len );
-	num = sprintf_s(cmdline, cmdline_len, "\"%s%s%s\"", add_module_path ? __progdir : "", add_module_path ? "\\":"", cmd);
+	memset(cmdline, '\0', cmdline_len);
+	num = sprintf_s(cmdline, cmdline_len, "\"%s%s%s\"", add_module_path ? __progdir : "", add_module_path ? "\\" : "", cmd);
 	if (num == -1) {
 		errno = ENOMEM;
 		goto cleanup;
@@ -1122,20 +1122,28 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 		t1 = argv;
 		while (*t1) {
 			*t++ = ' ';
-			*t++ = '\"';
 			char * p1 = *t1++;
 			int i = 0;
+			BOOL has_space = FALSE;
+			for (int i = 0; i < (int)strlen(p1); i++) {
+				if (p1[i] == ' ') {
+					has_space = TRUE;
+					break;
+				}
+			}
+			if(has_space)
+				*t++ = '\"';
 			for (int i = 0; i < (int)strlen(p1); i++) {
 				if (p1[i] == '\\') {
 					char * backslash = p1 + i;
 					int addition_backslash = 0;
 					int backslash_count = 0;
 					/*
-					  Backslashes are interpreted literally, unless they immediately 
+					  Backslashes are interpreted literally, unless they immediately
 					  precede a double quotation mark.
 					*/
 					while (backslash != NULL && *backslash == '\\') {
-						if ((backslash + 1 ) != NULL && *(backslash + 1) == '\"') {
+						if ((backslash + 1) != NULL && *(backslash + 1) == '\"') {
 							addition_backslash = 1;
 							break;
 						}
@@ -1151,21 +1159,23 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 					*t++ = '\\';
 					*t++ = '\"';
 				}
-				else
+				else {
 					*t++ = p1[i];
+				}
 			}
-			*t++ = '\"';
+			if (has_space)
+				*t++ = '\"';
 		}
 	}
 	*t = '\0';
-
+	
 	if ((cmdline_utf16 = utf8_to_utf16(cmdline)) == NULL) {
 		errno = ENOMEM;
 		goto cleanup;
 	}
-
+	
 	memset(&si, 0, sizeof(STARTUPINFOW));
-	si.cb = sizeof(STARTUPINFOW);
+	si.cb = sizeof(STARTUPINFOW);	
 	si.hStdInput = in;
 	si.hStdOutput = out;
 	si.hStdError = err;
