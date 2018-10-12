@@ -317,7 +317,7 @@ test_chroot()
 	//_wsystem(L"RD /S /Q chroot-testdir >NUL 2>&1");
 }
 
-void
+/*void
 test_build_session_commandline()
 {
 	char *progdir = __progdir, *out, buf[PATH_MAX * 2];
@@ -408,7 +408,7 @@ test_build_session_commandline()
 	ASSERT_STRING_EQ(out, "\"c:\\myshell\" -c \"scp.exe -arg\"");
 	free(out);
 	TEST_DONE();
-}
+}*/
 
 
 void
@@ -421,5 +421,5 @@ miscellaneous_tests()
 	test_realpath();
 	test_statvfs();
 	test_chroot();
-	test_build_session_commandline();
+	//test_build_session_commandline();
 }
