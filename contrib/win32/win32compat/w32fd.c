@@ -1111,7 +1111,10 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 	/* add current module path to start if needed */
 	t = cmdline;
 	memset(cmdline, '\0', cmdline_len);
-	num = sprintf_s(cmdline, cmdline_len, "\"%s%s%s\"", add_module_path ? __progdir : "", add_module_path ? "\\" : "", cmd);
+	if(add_module_path)
+		num = sprintf_s(cmdline, cmdline_len, "\"%s\\%s\"", __progdir, cmd);
+	else
+		num = sprintf_s(cmdline, cmdline_len, "%s", cmd);
 	if (num == -1) {
 		errno = ENOMEM;
 		goto cleanup;
