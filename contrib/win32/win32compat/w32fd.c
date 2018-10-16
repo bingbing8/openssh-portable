@@ -1110,15 +1110,47 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 
 	/* add current module path to start if needed */
 	t = cmdline;
-	memset(cmdline, '\0', cmdline_len);
-	if(add_module_path)
-		num = sprintf_s(cmdline, cmdline_len, "\"%s\\%s\"", __progdir, cmd);
-	else
-		num = sprintf_s(cmdline, cmdline_len, "%s", cmd);
-	if (num == -1) {
-		errno = ENOMEM;
-		goto cleanup;
+	*t++ = '\"';
+	if (add_module_path) {
+		memcpy(t, __progdir, strlen(__progdir));
+		t += strlen(__progdir);
+		*t++ = '\\';
 	}
+
+	/* Add double quotes around the executable path
+	* path can be c:\cygwin64\bin\sh.exe "<e:\openssh\regress\ssh-log-wrapper.sh>"
+	* Please note that, this logic is not just bash test specific.
+	*/
+	const char *exe_extenstion = ".exe";
+	const char *tmp = NULL;
+	if ((tmp = strstr(path, exe_extenstion)) && (strlen(tmp) > strlen(exe_extenstion))) {
+		tmp += strlen(exe_extenstion); /* move the pointer to the end of ".exe" */		
+		if ((*path == '\"') && *(tmp) == '\"')
+			memcpy(t, path+1, strlen(path+1));
+		else if ((*path == '\'') && *tmp == '\'') {
+			memcpy(t, path + 1, strlen(path + 1) - strlen(tmp));
+			t += strlen(path + 1) - strlen(tmp);
+			*t++ = '\"';
+			tmp++;
+			if (tmp) {
+				memcpy(t, tmp, strlen(tmp));
+				t += strlen(tmp);
+			}
+		}
+		else {
+			memcpy(t, path, strlen(path) - strlen(tmp));
+			t += strlen(path) - strlen(tmp);
+			*t++ = '\"';
+			memcpy(t, tmp, strlen(tmp));
+			t += strlen(tmp);
+		}
+	}
+	else {
+		memcpy(t, path, strlen(path));
+		t += strlen(path);
+		*t++ = '\"';
+	}
+	*t = '\0';
 	t = cmdline + strlen(cmdline);
 
 	if (argv) {

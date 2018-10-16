@@ -1318,7 +1318,7 @@ int
 is_absolute_path(const char *path)
 {
 	int retVal = 0;
-	if(*path == '\"') /* skip double quote if path is "c:\abc" */
+	if(*path == '\"' || *path == '\'') /* skip double quote if path is "c:\abc" */
 		path++;
 
 	if (*path == '/' || *path == '\\' || (*path != '\0' && isalpha(*path) && path[1] == ':') ||
