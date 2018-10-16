@@ -1129,14 +1129,14 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 	if ((tmp = strstr(path, exe_extenstion)) && (strlen(tmp) > strlen(exe_extenstion))) {
 		tmp += strlen(exe_extenstion); /* move the pointer to the end of ".exe" */		
 		if ((*path == '\"') && *(tmp) == '\"') 
-			/* for the case the command is surrounded by double quotes*/
-			memcpy(t, path+1, strlen(path+1));
+			/* leave as is if the command is surrounded by double quotes*/
+			memcpy(t, path + 1, strlen(path + 1));
 		else if ((*path == '\'') && *tmp == '\'') {
-			/* for the case the command is surrounded by single quotes*/
+			/* leave as is if the command is surrounded by single quotes*/
+			tmp++;
 			memcpy(t, path + 1, strlen(path + 1) - strlen(tmp));
 			t += strlen(path + 1) - strlen(tmp);
-			*t++ = '\"';
-			tmp++;
+			*cmdline = '\'';
 			if (tmp) {
 				memcpy(t, tmp, strlen(tmp));
 				t += strlen(tmp);
@@ -1163,14 +1163,17 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 		while (*t1) {
 			*t++ = ' ';
 			char * p1 = *t1++;
-			BOOL has_space = FALSE;
-			for (int i = 0; i < (int)strlen(p1); i++) {
-				if (p1[i] == ' ') {
-					has_space = TRUE;
-					break;
+			BOOL add_quotes = FALSE;
+			/* leave as is if the command is surrounded by single quotes*/
+			if (p1[0] != '\'') {
+				for (int i = 0; i < (int)strlen(p1); i++) {
+					if (p1[i] == ' ') {
+						add_quotes = TRUE;
+						break;
+					}
 				}
 			}
-			if(has_space)
+			if(add_quotes)
 				*t++ = '\"';
 			for (int i = 0; i < (int)strlen(p1); i++) {
 				if (escape_command && p1[i] == '\\') {
@@ -1202,7 +1205,7 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 					*t++ = p1[i];
 				}
 			}
-			if (has_space)
+			if (add_quotes)
 				*t++ = '\"';
 		}
 	}
@@ -1235,7 +1238,7 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 	}
 	else {
 		errno = GetLastError();
-		error("%s failed error:%d", (as_user?"CreateProcessAsUserW":"CreateProcessW"), GetLastError());
+		error("%s: %s (%s)", (as_user?"CreateProcessAsUserW":"CreateProcessW"), strerror(errno), cmdline);
 		goto cleanup;
 	}
 
