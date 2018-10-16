@@ -284,10 +284,14 @@ int wmain(int argc, wchar_t **wargv) {
 			errno = result;
 			if (path_new_value)
 				free(path_new_value);
+			if(path_value)
+				free(path_value);
 			return -1;
 		}
 		if (path_new_value)
 			free(path_new_value);
+		if(path_value)
+			free(path_value);
 	}
 
 	if (!StartServiceCtrlDispatcherW(dispatch_table)) {

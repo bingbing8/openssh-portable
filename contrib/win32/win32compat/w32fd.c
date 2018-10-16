@@ -1128,9 +1128,11 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 	const char *tmp = NULL;
 	if ((tmp = strstr(path, exe_extenstion)) && (strlen(tmp) > strlen(exe_extenstion))) {
 		tmp += strlen(exe_extenstion); /* move the pointer to the end of ".exe" */		
-		if ((*path == '\"') && *(tmp) == '\"')
+		if ((*path == '\"') && *(tmp) == '\"') 
+			/* for the case the command is surrounded by double quotes*/
 			memcpy(t, path+1, strlen(path+1));
 		else if ((*path == '\'') && *tmp == '\'') {
+			/* for the case the command is surrounded by single quotes*/
 			memcpy(t, path + 1, strlen(path + 1) - strlen(tmp));
 			t += strlen(path + 1) - strlen(tmp);
 			*t++ = '\"';
@@ -1161,7 +1163,6 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 		while (*t1) {
 			*t++ = ' ';
 			char * p1 = *t1++;
-			int i = 0;
 			BOOL has_space = FALSE;
 			for (int i = 0; i < (int)strlen(p1); i++) {
 				if (p1[i] == ' ') {
@@ -1206,12 +1207,12 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 		}
 	}
 	*t = '\0';
-	
+
 	if ((cmdline_utf16 = utf8_to_utf16(cmdline)) == NULL) {
 		errno = ENOMEM;
 		goto cleanup;
 	}
-	
+
 	memset(&si, 0, sizeof(STARTUPINFOW));
 	si.cb = sizeof(STARTUPINFOW);	
 	si.hStdInput = in;
