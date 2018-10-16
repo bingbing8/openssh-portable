@@ -1042,6 +1042,7 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 	wchar_t * cmdline_utf16 = NULL;
 	int add_module_path = 0, ret = -1, num;
 	char *path = NULL;
+	BOOL escape_command = TRUE;
 
 	if (!cmd) {
 		error("%s invalid argument cmd:%s", __func__, cmd);
@@ -1052,6 +1053,8 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 		error("failed to duplicate %s", cmd);
 		return ret;
 	}
+	if (strstr(path, "system32\\cmd") || strstr(path, "ssh-shellhost"))
+		escape_command = FALSE;
 
 	if (is_bash_test_env()) {
 		size_t len = strlen(path) + 1;
@@ -1074,7 +1077,7 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 		while (*t1) {
 			char *p = *t1++;
 			for (int i = 0; i < (int)strlen(p); i++) {
-				if (p[i] == '\\') {
+				if (escape_command && p[i] == '\\') {
 					char * backslash = p + i;
 					int addition_backslash = 0;
 					int backslash_count = 0;
@@ -1093,7 +1096,7 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 					cmdline_len += backslash_count * (addition_backslash + 1);
 					i += backslash_count - 1;
 				}
-				else if (p[i] == '\"')
+				else if (escape_command && p[i] == '\"')
 					/* backslash will be added for every double quote.*/
 					cmdline_len += 2;
 				else
@@ -1169,7 +1172,7 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 			if(has_space)
 				*t++ = '\"';
 			for (int i = 0; i < (int)strlen(p1); i++) {
-				if (p1[i] == '\\') {
+				if (escape_command && p1[i] == '\\') {
 					char * backslash = p1 + i;
 					int addition_backslash = 0;
 					int backslash_count = 0;
@@ -1189,7 +1192,7 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 					while ((backslash_count--) * (addition_backslash + 1))
 						*t++ = '\\';
 				}
-				else if (p1[i] == '\"') {
+				else if (escape_command && p1[i] == '\"') {
 					/* Add backslash for every double quote.*/
 					*t++ = '\\';
 					*t++ = '\"';
