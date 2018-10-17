@@ -223,7 +223,7 @@ Describe "E2E scenarios for ssh client" -Tags "CI" {
             $o = ssh test_target echo ``\`"hello``\`"
             $o | Should Be "`"hello`""
         }
-        It "$tC.$tI - multiple double quotes in powershell cmdlet" -skip:$skip {
+        It "$tC.$tI - multiple commands with double quotes in powershell cmdlet" -skip:$skip {
             # actual command line ssh target cd "$env:programfiles";pwd
             $o = ssh test_target "cd \`"`$env:programfiles\`";pwd"
             $LASTEXITCODE | Should Be 0
@@ -237,6 +237,12 @@ Describe "E2E scenarios for ssh client" -Tags "CI" {
             #$o -contains "Program Files" | Should Be $True
             $match = $o -match "Program Files"
             $match.count | Should Be 3
+        }
+        It "$tC.$tI - single quotes in powershell cmdlet" -skip:$skip {
+            # actual command line ssh target echo '$env:computername'
+            $o = ssh test_target "echo '`$env:computername'"
+            $LASTEXITCODE | Should Be 0            
+            $o | Should Be `$env:computername
         }
     }
     Context "$tC - configure cmd as default shell" {
@@ -260,6 +266,12 @@ Describe "E2E scenarios for ssh client" -Tags "CI" {
             # actual command line ssh target echo "\"hello\""
             $o = ssh test_target 'echo "\"hello\""'
             $o | Should Be "`"hello`""
+        }
+        It "$tC.$tI - single quotes in powershell cmdlet" -skip:$skip {
+            # actual command line ssh target echo '$env:computername'
+            $o = ssh test_target "echo 'hello'"
+            $LASTEXITCODE | Should Be 0            
+            $o | Should Be "'hello'"
         }
     }
     Context "$tC - configure ssh-shellhost as default shell" {

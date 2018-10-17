@@ -97,13 +97,17 @@ int is_conpty_supported()
 	return 0;
 }
 
-int exec_command_with_pty(int * pid, wchar_t* cmd, int in, int out, int err, unsigned int col, unsigned int row, int ttyfd)
+int exec_command_with_pty(int * pid, char* cmd, int in, int out, int err, unsigned int col, unsigned int row, int ttyfd)
 {
 	PROCESS_INFORMATION pi;
 	STARTUPINFOW si;	
 	wchar_t pty_cmdline[MAX_CMD_LEN] = { 0, };
 	int ret = -1;
 	HANDLE ttyh = (HANDLE)w32_fd_to_handle(ttyfd);
+	wchar_t * cmd_w = NULL;
+
+	if ((cmd_w = utf8_to_utf16(cmd)) == NULL)
+		return ret;
 
 	memset(&si, 0, sizeof(STARTUPINFO));
 	si.cb = sizeof(STARTUPINFO);
@@ -119,11 +123,11 @@ int exec_command_with_pty(int * pid, wchar_t* cmd, int in, int out, int err, uns
 	si.lpDesktop = NULL;
 
 	if (is_conpty_supported())
-		return CreateConPty(cmd, (short)si.dwXCountChars, (short)si.dwYCountChars, si.hStdInput, si.hStdOutput, ttyh, &pi);
+		return CreateConPty(cmd_w, (short)si.dwXCountChars, (short)si.dwYCountChars, si.hStdInput, si.hStdOutput, ttyh, &pi);
 
 	/* launch via  "ssh-shellhost" -p command*/
 
-	_snwprintf_s(pty_cmdline, MAX_CMD_LEN, MAX_CMD_LEN, L"\"%ls\\ssh-shellhost.exe\" ---pty %ls", __wprogdir, cmd);
+	_snwprintf_s(pty_cmdline, MAX_CMD_LEN, MAX_CMD_LEN, L"\"%ls\\ssh-shellhost.exe\" ---pty %ls", __wprogdir, cmd_w);
 	/* 
 	 * In PTY mode, ssh-shellhost takes stderr as control channel
 	 * TODO - fix this and pass control channel pipe as a command line parameter
@@ -148,5 +152,7 @@ int exec_command_with_pty(int * pid, wchar_t* cmd, int in, int out, int err, uns
 	ret = 0;
 
 done:
+	if (cmd_w)
+		free(cmd_w);
 	return ret;
 }

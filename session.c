@@ -582,7 +582,6 @@ char* build_command_string(char* command);
 
 int do_exec_windows(struct ssh *ssh, Session *s, const char *command, int pty) {
 	int pipein[2], pipeout[2], pipeerr[2], r, ret = -1;
-	wchar_t *exec_command_w = NULL;
 	char *exec_command = NULL;
 	HANDLE job = NULL, process_handle;
 	extern char* shell_command_option;
@@ -631,10 +630,8 @@ int do_exec_windows(struct ssh *ssh, Session *s, const char *command, int pty) {
 	debug3("command: %s with %spty", exec_command, pty ? " " : "no ");
 
 	if (pty) {
-		if ((exec_command_w = utf8_to_utf16(s->pw->pw_shell)) == NULL)
-			goto cleanup;
 		fcntl(s->ptyfd, F_SETFD, FD_CLOEXEC);
-		if (exec_command_with_pty(&pid, exec_command_w, pipein[0], pipeout[1], pipeerr[1], s->col, s->row, s->ttyfd) == -1)
+		if (exec_command_with_pty(&pid, exec_command, pipein[0], pipeout[1], pipeerr[1], s->col, s->row, s->ttyfd) == -1)
 			goto cleanup;
 		close(s->ttyfd);
 		s->ttyfd = -1;
@@ -723,8 +720,6 @@ int do_exec_windows(struct ssh *ssh, Session *s, const char *command, int pty) {
 cleanup:
 	if (!exec_command)
 		free(exec_command);
-	if (!exec_command_w)
-		free(exec_command_w);
 	if (job)
 		CloseHandle(job);
 
