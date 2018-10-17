@@ -1678,9 +1678,8 @@ bash_to_win_path(const char *in, char *out, const size_t out_len)
 		out[1] = ':';
 		strcat_s(out, out_len, &in[cygwin_path_prefix_len + 1]);
 		retVal = 1;
-	} else {
+	} else
 		strcpy_s(out, out_len, in);
-	}
 
 	return retVal;
 }

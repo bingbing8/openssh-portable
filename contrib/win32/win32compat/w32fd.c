@@ -1048,7 +1048,7 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 		error("%s invalid argument cmd:%s", __func__, cmd);
 		return ret;
 	}
-
+	
 	if (!(path = _strdup(cmd))) {
 		error("failed to duplicate %s", cmd);
 		return ret;
@@ -1216,6 +1216,7 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 		goto cleanup;
 	}
 
+	debug3("Executing command: %s", cmdline);
 	memset(&si, 0, sizeof(STARTUPINFOW));
 	si.cb = sizeof(STARTUPINFOW);	
 	si.hStdInput = in;

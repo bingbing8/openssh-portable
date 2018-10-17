@@ -627,6 +627,8 @@ int do_exec_windows(struct ssh *ssh, Session *s, const char *command, int pty) {
 	HANDLE job_dup;
 	pid_t pid = -1;
 	exec_command = build_command_string(command);
+	debug3("shell: %s", s->pw->pw_shell);
+	debug3("command: %s with %spty", exec_command, pty ? " " : "no ");
 
 	if (pty) {
 		if ((exec_command_w = utf8_to_utf16(s->pw->pw_shell)) == NULL)
@@ -690,6 +692,7 @@ int do_exec_windows(struct ssh *ssh, Session *s, const char *command, int pty) {
 		errno = EOTHER;
 		error("cannot associate job object: %d", GetLastError());
 		TerminateProcess(process_handle, 255);
+		CloseHandle(process_handle);
 		goto cleanup;
 	}
 	s->pid = pid;
