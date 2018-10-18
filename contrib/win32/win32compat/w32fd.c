@@ -1040,7 +1040,7 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 	char * const *t1;
 	DWORD cmdline_len = 0;
 	wchar_t * cmdline_utf16 = NULL;
-	int add_module_path = 0, ret = -1, num;
+	int add_module_path = 0, ret = -1;
 	char *path = NULL;
 	BOOL escape_command = TRUE;
 
@@ -1048,7 +1048,7 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 		error("%s invalid argument cmd:%s", __func__, cmd);
 		return ret;
 	}
-	
+
 	if (!(path = _strdup(cmd))) {
 		error("failed to duplicate %s", cmd);
 		return ret;
@@ -1218,7 +1218,7 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 
 	debug3("Executing command: %s", cmdline);
 	memset(&si, 0, sizeof(STARTUPINFOW));
-	si.cb = sizeof(STARTUPINFOW);	
+	si.cb = sizeof(STARTUPINFOW);
 	si.hStdInput = in;
 	si.hStdOutput = out;
 	si.hStdError = err;
@@ -1239,7 +1239,7 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 	}
 	else {
 		errno = GetLastError();
-		error("%s: %s (%s)", (as_user?"CreateProcessAsUserW":"CreateProcessW"), strerror(errno), cmdline);
+		error("%s: %d (%s)", (as_user?"CreateProcessAsUserW":"CreateProcessW"), GetLastError(), cmdline);
 		goto cleanup;
 	}
 
