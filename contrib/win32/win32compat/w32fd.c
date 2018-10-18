@@ -1239,7 +1239,7 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 	}
 	else {
 		errno = GetLastError();
-		error("%s: %d (%s)", (as_user?"CreateProcessAsUserW":"CreateProcessW"), GetLastError(), cmdline);
+		error("%s failed error:%d", (as_user ? "CreateProcessAsUserW" : "CreateProcessW"), GetLastError());
 		goto cleanup;
 	}
 
