@@ -72,7 +72,7 @@ PSID get_sid(const char*);
 int am_system();
 char * build_command_string(const char * );
 int is_conpty_supported();
-int exec_command_with_pty(int * pid, wchar_t* cmd, int in, int out, int err, unsigned int col, unsigned int row, int ttyfd);
+int exec_command_with_pty(int * pid, char* cmd, int in, int out, int err, unsigned int col, unsigned int row, int ttyfd);
 char* get_custom_lsa_package();
 wchar_t* get_final_path_by_handle(HANDLE h);
 int lookup_principal_name(const wchar_t * sam_account_name, wchar_t * user_principal_name);

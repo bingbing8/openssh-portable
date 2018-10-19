@@ -31,6 +31,7 @@
 #include <string.h>
 #include "Debug.h"
 #include "inc\fcntl.h"
+#include "inc\utf.h"
 #include "misc_internal.h"
 #include "signal_internal.h"
 
@@ -100,7 +101,7 @@ int is_conpty_supported()
 int exec_command_with_pty(int * pid, char* cmd, int in, int out, int err, unsigned int col, unsigned int row, int ttyfd)
 {
 	PROCESS_INFORMATION pi;
-	STARTUPINFOW si;	
+	STARTUPINFOW si;
 	wchar_t pty_cmdline[MAX_CMD_LEN] = { 0, };
 	int ret = -1;
 	HANDLE ttyh = (HANDLE)w32_fd_to_handle(ttyfd);
