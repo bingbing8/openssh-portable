@@ -96,7 +96,7 @@
 #include "monitor_wrap.h"
 #include "sftp.h"
 #include "atomicio.h"
-#include "sshdoexec.h"
+#include "pal_doexec.h"
 
 #if defined(KRB5) && defined(USE_AFS)
 #include <kafs.h>
