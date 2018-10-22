@@ -1031,18 +1031,16 @@ int fork()
 */
 
 static int
-spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDLE err, unsigned long flags, HANDLE* as_user, BOOLEAN prepend_module_path)
+spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDLE err, unsigned long flags, HANDLE* as_user, BOOLEAN transform_cmd)
 {
 	PROCESS_INFORMATION pi;
 	STARTUPINFOW si;
-	BOOL b;
-	char *cmdline, *t;
+	BOOL b, escape_command = TRUE;
+	char *cmdline, *t, *tmp = NULL, *path = NULL;
 	char * const *t1;
-	DWORD cmdline_len = 0;
+	DWORD cmdline_len = 0, path_len = 0;
 	wchar_t * cmdline_utf16 = NULL;
 	int add_module_path = 0, ret = -1;
-	char *path = NULL;
-	BOOL escape_command = TRUE;
 
 	if (!cmd) {
 		error("%s invalid argument cmd:%s", __func__, cmd);
@@ -1053,17 +1051,23 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 		error("failed to duplicate %s", cmd);
 		return ret;
 	}
-	if (strstr(path, "system32\\cmd") || strstr(path, "ssh-shellhost"))
+
+	path_len = (DWORD)strlen(path) +1 ;
+	/*
+	 * user defined cmd may contain path and args already
+	 * the cmd should have quotes it properly
+	 */
+	if (!transform_cmd)
+		escape_command = FALSE;
+	else if (strstr(path, "system32\\cmd") || strstr(path, "ssh-shellhost"))
 		escape_command = FALSE;
 
 	if (is_bash_test_env()) {
-		size_t len = strlen(path) + 1;
-		memset(path, 0, len);
-
-		bash_to_win_path(cmd, path, len);
+		memset(path, 0, path_len);
+		bash_to_win_path(cmd, path, path_len);
 	}
 
-	if (!is_absolute_path(path) && prepend_module_path)
+	if (!is_absolute_path(path) && transform_cmd)
 		add_module_path = 1;
 
 	/* compute total cmdline len*/
@@ -1110,52 +1114,57 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 		errno = ENOMEM;
 		goto cleanup;
 	}
-
-	/* add current module path to start if needed */
-	t = cmdline;
-	*t++ = '\"';
-	if (add_module_path) {
-		memcpy(t, __progdir, strlen(__progdir));
-		t += strlen(__progdir);
-		*t++ = '\\';
+	
+	/*For user define cmd, don't add quotes*/
+	if (!transform_cmd) {
+		strcpy_s(cmdline, cmdline_len, path);
 	}
-
-	/* Add double quotes around the executable path
-	* path can be c:\cygwin64\bin\sh.exe "<e:\openssh\regress\ssh-log-wrapper.sh>"
-	* Please note that, this logic is not just bash test specific.
-	*/
-	const char *exe_extenstion = ".exe";
-	const char *tmp = NULL;
-	if ((tmp = strstr(path, exe_extenstion)) && (strlen(tmp) > strlen(exe_extenstion))) {
-		tmp += strlen(exe_extenstion); /* move the pointer to the end of ".exe" */		
-		if ((*path == '\"') && *(tmp) == '\"') 
-			/* leave as is if the command is surrounded by double quotes*/
-			memcpy(t, path + 1, strlen(path + 1));
-		else if ((*path == '\'') && *tmp == '\'') {
-			/* leave as is if the command is surrounded by single quotes*/
-			tmp++;
-			memcpy(t, path + 1, strlen(path + 1) - strlen(tmp));
-			t += strlen(path + 1) - strlen(tmp);
-			*cmdline = '\'';
-			if (tmp) {
+	else {
+		t = cmdline;
+		*t++ = '\"';
+		/* add current module path to start if needed */
+		if (add_module_path) {
+			memcpy(t, __progdir, strlen(__progdir));
+			t += strlen(__progdir);
+			*t++ = '\\';
+		}
+		/*
+		* Add double quotes around the executable path if they are not surrounded by
+		* double quotes or single quotes
+		* path can be c:\cygwin64\bin\sh.exe "<e:\openssh\regress\ssh-log-wrapper.sh>"
+		*/
+		const char *exe_extenstion = ".exe";
+		if ((tmp = strstr(path, exe_extenstion)) && (strlen(tmp) > strlen(exe_extenstion))) {
+			tmp += strlen(exe_extenstion); /* move the pointer to the end of ".exe" */
+			if ((*path == '\"') && *(tmp) == '\"')
+				/* leave as is if the command is surrounded by double quotes*/
+				memcpy(t, path + 1, strlen(path + 1));
+			else if ((*path == '\'') && *tmp == '\'') {
+				/* leave as is if the command is surrounded by single quotes*/
+				tmp++;
+				memcpy(t, path + 1, strlen(path + 1) - strlen(tmp));
+				t += strlen(path + 1) - strlen(tmp);
+				*cmdline = '\'';
+				if (tmp) {
+					memcpy(t, tmp, strlen(tmp));
+					t += strlen(tmp);
+				}
+			}
+			else {
+				memcpy(t, path, strlen(path) - strlen(tmp));
+				t += strlen(path) - strlen(tmp);
+				*t++ = '\"';
 				memcpy(t, tmp, strlen(tmp));
 				t += strlen(tmp);
 			}
 		}
 		else {
-			memcpy(t, path, strlen(path) - strlen(tmp));
-			t += strlen(path) - strlen(tmp);
+			memcpy(t, path, strlen(path));
+			t += strlen(path);
 			*t++ = '\"';
-			memcpy(t, tmp, strlen(tmp));
-			t += strlen(tmp);
 		}
+		*t = '\0';
 	}
-	else {
-		memcpy(t, path, strlen(path));
-		t += strlen(path);
-		*t++ = '\"';
-	}
-	*t = '\0';
 	t = cmdline + strlen(cmdline);
 
 	if (argv) {
@@ -1372,7 +1381,7 @@ fd_decode_state(char* enc_buf)
 }
 
 int
-posix_spawn_internal(pid_t *pidp, const char *path, const posix_spawn_file_actions_t *file_actions, const posix_spawnattr_t *attrp, char *const argv[], char *const envp[], HANDLE user_token, BOOLEAN prepend_module_path)
+posix_spawn_internal(pid_t *pidp, const char *path, const posix_spawn_file_actions_t *file_actions, const posix_spawnattr_t *attrp, char *const argv[], char *const envp[], HANDLE user_token, BOOLEAN transform_cmd)
 {
 	int i, ret = -1;
 	int sc_flags = 0;
@@ -1408,7 +1417,7 @@ posix_spawn_internal(pid_t *pidp, const char *path, const posix_spawn_file_actio
 
 	if (_putenv_s(POSIX_FD_STATE, fd_info) != 0)
 		goto cleanup;
-	i = spawn_child_internal(argv[0], argv + 1, stdio_handles[STDIN_FILENO], stdio_handles[STDOUT_FILENO], stdio_handles[STDERR_FILENO], sc_flags, user_token, prepend_module_path);
+	i = spawn_child_internal(argv[0], argv + 1, stdio_handles[STDIN_FILENO], stdio_handles[STDOUT_FILENO], stdio_handles[STDERR_FILENO], sc_flags, user_token, transform_cmd);
 	if (i == -1)
 		goto cleanup;
 	if (pidp)

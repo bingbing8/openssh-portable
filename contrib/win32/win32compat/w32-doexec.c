@@ -36,7 +36,7 @@
 #include "log.h"
 #include "misc.h"
 #include "servconf.h"
-#include "sshdoexec.h"
+#include "pal_doexec.h"
 #include "misc_internal.h"
 
 #ifndef SUBSYSTEM_NONE

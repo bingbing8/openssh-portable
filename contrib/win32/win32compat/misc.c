@@ -1593,14 +1593,6 @@ char * build_command_string( const char * command)
 	if (!command)
 		return NULL;
 
-	/*
-	* special case where incoming command needs to be adjusted 
-	* identify scp and sftp sessions
-	* we want to launch scp and sftp executables from the same binary directory
-	* that sshd is hosted in. This will facilitate hosting and evaluating
-	* multiple versions of OpenSSH at the same time.
-	*/
-
 	int command_len;
 	const char *command_args = NULL;
 

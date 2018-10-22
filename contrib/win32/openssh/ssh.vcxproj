@@ -496,7 +496,7 @@
     <ClInclude Include="$(OpenSSH-Src-Path)uuencode.h" />
     <ClInclude Include="$(OpenSSH-Src-Path)version.h" />
     <ClInclude Include="$(OpenSSH-Src-Path)xmalloc.h" />
-    <ClInclude Include="$(OpenSSH-Src-Path)sshdoexec.h" />
+    <ClInclude Include="$(OpenSSH-Src-Path)pal-doexec.c.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="$(OpenSSH-Src-Path)clientloop.c" />
