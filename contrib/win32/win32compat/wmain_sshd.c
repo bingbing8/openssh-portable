@@ -39,6 +39,7 @@
 
 #include "inc\utf.h"
 #include "misc_internal.h"
+#include "shlwapi.h"
 
 int main(int, char **);
 extern HANDLE main_thread;
@@ -151,7 +152,7 @@ create_prgdata_ssh_folder()
 	wchar_t sshd_config_path[PATH_MAX] = { 0, };
 	wcscat_s(sshd_config_path, _countof(sshd_config_path), ssh_cfg_dir);
 	wcscat_s(sshd_config_path, _countof(sshd_config_path), L"\\sshd_config");
-	if (GetFileAttributesW(sshd_config_path) == INVALID_FILE_ATTRIBUTES) {
+	if (!PathFileExistsW(sshd_config_path)) {
 		wchar_t sshd_config_default_path[PATH_MAX] = { 0, };
 		swprintf_s(sshd_config_default_path, PATH_MAX, L"%S\\%s", __progdir, L"sshd_config_default");
 
@@ -163,12 +164,11 @@ create_prgdata_ssh_folder()
 
 	/* copy moduli_default to %programData%\ssh\moduli */
 	wchar_t moduli_path[PATH_MAX] = { 0, };
+	wchar_t moduli_default_path[PATH_MAX] = { 0, };
 	wcscat_s(moduli_path, _countof(moduli_path), ssh_cfg_dir);
 	wcscat_s(moduli_path, _countof(moduli_path), L"\\moduli");
-	if (GetFileAttributesW(moduli_path) == INVALID_FILE_ATTRIBUTES) {
-		wchar_t moduli_default_path[PATH_MAX] = { 0, };
-		swprintf_s(moduli_default_path, PATH_MAX, L"%S\\%s", __progdir, L"moduli_default");
-
+	swprintf_s(moduli_default_path, PATH_MAX, L"%S\\%s", __progdir, L"moduli_default");
+	if (PathFileExistsW(moduli_default_path) && !PathFileExistsW(moduli_path)) {
 		if (CopyFileW(moduli_default_path, moduli_path, TRUE) == 0) {
 			printf("Failed to copy %s to %s, error:%d", moduli_default_path, moduli_path, GetLastError());
 			exit(255);
