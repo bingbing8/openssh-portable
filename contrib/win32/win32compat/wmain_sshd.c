@@ -164,7 +164,7 @@ create_prgdata_ssh_folder()
 	/* copy moduli_default to %programData%\ssh\moduli */
 	wchar_t moduli_path[PATH_MAX] = { 0, };
 	wcscat_s(moduli_path, _countof(moduli_path), ssh_cfg_dir);
-	wcscat_s(moduli_path, _countof(sshd_config_path), L"\\moduli_config");
+	wcscat_s(moduli_path, _countof(moduli_path), L"\\moduli");
 	if (GetFileAttributesW(moduli_path) == INVALID_FILE_ATTRIBUTES) {
 		wchar_t moduli_default_path[PATH_MAX] = { 0, };
 		swprintf_s(moduli_default_path, PATH_MAX, L"%S\\%s", __progdir, L"moduli_default");
