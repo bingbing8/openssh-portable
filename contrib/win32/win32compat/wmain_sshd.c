@@ -160,6 +160,20 @@ create_prgdata_ssh_folder()
 			exit(255);
 		}
 	}
+
+	/* copy moduli_default to %programData%\ssh\moduli */
+	wchar_t moduli_path[PATH_MAX] = { 0, };
+	wcscat_s(moduli_path, _countof(moduli_path), ssh_cfg_dir);
+	wcscat_s(moduli_path, _countof(sshd_config_path), L"\\moduli_config");
+	if (GetFileAttributesW(moduli_path) == INVALID_FILE_ATTRIBUTES) {
+		wchar_t moduli_default_path[PATH_MAX] = { 0, };
+		swprintf_s(moduli_default_path, PATH_MAX, L"%S\\%s", __progdir, L"moduli_default");
+
+		if (CopyFileW(moduli_default_path, moduli_path, TRUE) == 0) {
+			printf("Failed to copy %s to %s, error:%d", moduli_default_path, moduli_path, GetLastError());
+			exit(255);
+		}
+	}
 }
 
 /* Create HKLM\Software\OpenSSH windows registry key */
