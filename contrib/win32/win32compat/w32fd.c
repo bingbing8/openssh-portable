@@ -1057,7 +1057,7 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 	path_len = (DWORD)strlen(path) +1 ;
 	/*
 	 * user defined command may contain path and args already
-	 * and it should have quotes it properly if needed
+	 * and it should have quotes and escaping already set if needed
 	 */
 	if (!user_defined_cmd && (strstr(path, "powershell") ||
 		strstr(path, "\\bash") || strstr(path, "cygwin")))
