@@ -288,7 +288,7 @@ int do_exec_windows(struct ssh *ssh, Session *s, const char *command, int pty) {
 
 	JOBOBJECT_EXTENDED_LIMIT_INFORMATION job_info;
 	HANDLE job_dup;
-	pid_t pid = -1;	
+	pid_t pid = -1;
 	exec_command = build_command_string(command);
 	debug3("shell: %s", s->pw->pw_shell);
 	debug3("command: %s with %spty", exec_command, pty ? " " : "no ");
@@ -307,12 +307,20 @@ int do_exec_windows(struct ssh *ssh, Session *s, const char *command, int pty) {
 		if (exec_command) {
 			if (shell_command_option) {
 				spawn_argv[1] = shell_command_option;
+				spawn_argv[2] = exec_command;
 			}
-			else if (strstr(s->pw->pw_shell, "system32\\cmd"))
+			else if (strstr(s->pw->pw_shell, "system32\\cmd")) {
 				spawn_argv[1] = "/c";
-			else
+				spawn_argv[2] = exec_command;
+			}
+			else if (strstr(s->pw->pw_shell, "powershell") ||
+				strstr(s->pw->pw_shell, "\\bash") ||
+				strstr(s->pw->pw_shell, "cygwin")) {
 				spawn_argv[1] = "-c";
-			spawn_argv[2] = exec_command;
+				spawn_argv[2] = exec_command;
+			}
+			else
+				spawn_argv[1] = exec_command;
 		}
 
 		if (posix_spawn_file_actions_init(&actions) != 0 ||
