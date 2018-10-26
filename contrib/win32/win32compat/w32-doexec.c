@@ -315,7 +315,8 @@ int do_exec_windows(struct ssh *ssh, Session *s, const char *command, int pty) {
 			}
 			else if (strstr(s->pw->pw_shell, "powershell") ||
 				strstr(s->pw->pw_shell, "\\bash") ||
-				strstr(s->pw->pw_shell, "cygwin")) {
+				strstr(s->pw->pw_shell, "cygwin") ||
+				strstr(s->pw->pw_shell, "ssh-shellhost")) {
 				spawn_argv[1] = "-c";
 				spawn_argv[2] = exec_command;
 			}
