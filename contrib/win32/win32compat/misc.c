@@ -1588,16 +1588,12 @@ char * build_command_string( const char * command)
 {
 	enum cmd_type { CMD_OTHER, CMD_SFTP, CMD_SCP } command_type = CMD_OTHER;
 	char *cmd_sp = NULL;
-	int len = 0;
-
-	if (!command)
-		return NULL;
-
-	int command_len;
+	int len = 0, command_len;
 	const char *command_args = NULL;
 
 	if (!command)
 		return NULL;
+
 	command_len = (int)strlen(command);
 	/*TODO - replace numbers below with readable compile time operators*/
 	if (command_len >= 13 && _memicmp(command, "internal-sftp", 13) == 0) {
