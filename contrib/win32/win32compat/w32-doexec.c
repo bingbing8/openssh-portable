@@ -57,6 +57,7 @@ extern ServerOptions options;
 extern struct sshauthopt *auth_opts;
 char **
 do_setup_env_proxy(struct ssh *, Session *, const char *);
+int posix_spawn_internal(pid_t *pidp, const char *path, const posix_spawn_file_actions_t *file_actions, const posix_spawnattr_t *attrp, char *const argv[], char *const envp[], HANDLE user_token, BOOLEAN prepend_module_path, BOOLEAN escape);
 
 /*
 * do_exec* on Windows
@@ -304,24 +305,27 @@ int do_exec_windows(struct ssh *ssh, Session *s, const char *command, int pty) {
 		posix_spawn_file_actions_t actions;
 		char *spawn_argv[4] = { NULL, };
 		spawn_argv[0] = s->pw->pw_shell;
+		BOOLEAN escape = FALSE;
+		int index = 1;
 		if (exec_command) {
+			if (strstr(s->pw->pw_shell, "powershell") ||
+				strstr(s->pw->pw_shell, "\\bash") ||
+				strstr(s->pw->pw_shell, "cygwin"))
+				escape = TRUE;
+
 			if (shell_command_option) {
-				spawn_argv[1] = shell_command_option;
-				spawn_argv[2] = exec_command;
+				spawn_argv[index++] = shell_command_option;
 			}
 			else if (strstr(s->pw->pw_shell, "system32\\cmd")) {
-				spawn_argv[1] = "/c";
-				spawn_argv[2] = exec_command;
+				spawn_argv[index++] = "/c";
 			}
 			else if (strstr(s->pw->pw_shell, "powershell") ||
 				strstr(s->pw->pw_shell, "\\bash") ||
 				strstr(s->pw->pw_shell, "cygwin") ||
 				strstr(s->pw->pw_shell, "ssh-shellhost")) {
-				spawn_argv[1] = "-c";
-				spawn_argv[2] = exec_command;
+				spawn_argv[index++] = "-c";
 			}
-			else
-				spawn_argv[1] = exec_command;
+			spawn_argv[index] = exec_command;
 		}
 
 		if (posix_spawn_file_actions_init(&actions) != 0 ||
@@ -332,7 +336,7 @@ int do_exec_windows(struct ssh *ssh, Session *s, const char *command, int pty) {
 			error("posix_spawn initialization failed");
 			goto cleanup;
 		}
-		if (posix_spawn(&pid, spawn_argv[0], &actions, NULL, spawn_argv, NULL) != 0) {
+		if (posix_spawn_internal(&pid, spawn_argv[0], &actions, NULL, spawn_argv, NULL, NULL, TRUE, escape) != 0) {
 			errno = EOTHER;
 			error("spawn_child_internal: %s", strerror(errno));
 			goto cleanup;

@@ -1031,12 +1031,12 @@ int fork()
 */
 
 static int
-spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDLE err, unsigned long flags, HANDLE* as_user, BOOLEAN prepend_module_path)
+spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDLE err, unsigned long flags, HANDLE* as_user, BOOLEAN prepend_module_path, BOOLEAN escape)
 {
 	PROCESS_INFORMATION pi;
 	STARTUPINFOW si;
-	BOOL b, escape_command = FALSE;
-	/* For now, when only user defined command don't prepend module path */
+	BOOL b;
+	/* For now, only user defined command is not prepend_module_path */
 	BOOL user_defined_cmd = !prepend_module_path;
 	char *cmdline, *t, *tmp = NULL, *path = NULL;
 	char * const *t1;
@@ -1054,15 +1054,7 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 		return ret;
 	}
 
-	path_len = (DWORD)strlen(path) +1 ;
-	/*
-	 * User defined command may contain path and args already
-	 * and it should have quotes and escaping set already
-	 * leave it as is
-	 */
-	if (!user_defined_cmd && (strstr(path, "powershell") ||
-		strstr(path, "\\bash") || strstr(path, "cygwin")))
-		escape_command = TRUE;
+	path_len = (DWORD)strlen(path) +1;
 
 	if (is_bash_test_env()) {
 		memset(path, 0, path_len);
@@ -1078,10 +1070,10 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 	else
 		cmdline_len += (DWORD)strlen(path) + 1 + 2;
 
-	if (argv) {
+		if (argv) {
 		t1 = argv;
 		while (*t1) {
-			if (!escape_command)
+			if (!escape)
 				cmdline_len += (DWORD)strlen(*t1++);
 			else {
 				char *p = *t1++;
@@ -1134,9 +1126,8 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 			*t++ = '\\';
 		}
 		/*
-		* Add double quotes around the executable path if they are not surrounded by
-		* double quotes or single quotes
-		* path can be c:\cygwin64\bin\sh.exe "<e:\openssh\regress\ssh-log-wrapper.sh>"
+		* Add double quotes around the executable path if they are not already
+		* surrounded by double quotes or single quotes
 		*/
 		const char *exe_extenstion = ".exe";
 		if ((tmp = strstr(path, exe_extenstion)) && (strlen(tmp) > strlen(exe_extenstion))) {
@@ -1188,7 +1179,7 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 				}
 			if(add_quotes)
 				*t++ = '\"';
-			if (!escape_command) {
+			if (!escape || !add_quotes) {
 				memcpy(t, p1, strlen(p1));
 				t += strlen(p1);
 			}
@@ -1199,8 +1190,8 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 						int addition_backslash = 0;
 						int backslash_count = 0;
 						/*
-						  Backslashes are interpreted literally, unless they immediately
-						  precede a double quotation mark.
+						Backslashes are interpreted literally, unless they immediately
+						precede a double quotation mark.
 						*/
 						while (backslash != NULL && *backslash == '\\') {
 							if ((backslash + 1) != NULL && *(backslash + 1) == '\"') {
@@ -1391,7 +1382,7 @@ fd_decode_state(char* enc_buf)
 }
 
 int
-posix_spawn_internal(pid_t *pidp, const char *path, const posix_spawn_file_actions_t *file_actions, const posix_spawnattr_t *attrp, char *const argv[], char *const envp[], HANDLE user_token, BOOLEAN prepend_module_path)
+posix_spawn_internal(pid_t *pidp, const char *path, const posix_spawn_file_actions_t *file_actions, const posix_spawnattr_t *attrp, char *const argv[], char *const envp[], HANDLE user_token, BOOLEAN prepend_module_path, BOOLEAN escape)
 {
 	int i, ret = -1;
 	int sc_flags = 0;
@@ -1427,7 +1418,7 @@ posix_spawn_internal(pid_t *pidp, const char *path, const posix_spawn_file_actio
 
 	if (_putenv_s(POSIX_FD_STATE, fd_info) != 0)
 		goto cleanup;
-	i = spawn_child_internal(argv[0], argv + 1, stdio_handles[STDIN_FILENO], stdio_handles[STDOUT_FILENO], stdio_handles[STDERR_FILENO], sc_flags, user_token, prepend_module_path);
+	i = spawn_child_internal(argv[0], argv + 1, stdio_handles[STDIN_FILENO], stdio_handles[STDOUT_FILENO], stdio_handles[STDERR_FILENO], sc_flags, user_token, prepend_module_path, escape);
 	if (i == -1)
 		goto cleanup;
 	if (pidp)
@@ -1460,11 +1451,11 @@ cleanup:
 int
 posix_spawn(pid_t *pidp, const char *path, const posix_spawn_file_actions_t *file_actions, const posix_spawnattr_t *attrp, char *const argv[], char *const envp[])
 {
-	return posix_spawn_internal(pidp, path, file_actions, attrp, argv, envp, NULL, TRUE);
+	return posix_spawn_internal(pidp, path, file_actions, attrp, argv, envp, NULL, TRUE, TRUE);
 }
 
 int
 posix_spawnp(pid_t *pidp, const char *file, const posix_spawn_file_actions_t *file_actions, const posix_spawnattr_t *attrp, char *const argv[], char *const envp[])
 {
-	return posix_spawn_internal(pidp, file, file_actions, attrp, argv, envp, NULL, FALSE);
+	return posix_spawn_internal(pidp, file, file_actions, attrp, argv, envp, NULL, FALSE, TRUE);
 }
