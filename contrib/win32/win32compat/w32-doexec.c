@@ -308,23 +308,31 @@ int do_exec_windows(struct ssh *ssh, Session *s, const char *command, int pty) {
 		BOOLEAN escape = FALSE;
 		int index = 1;
 		if (exec_command) {
-			if (strstr(s->pw->pw_shell, "powershell") ||
-				strstr(s->pw->pw_shell, "\\bash") ||
-				strstr(s->pw->pw_shell, "cygwin"))
+			enum sh_type { SH_OTHER, SH_CMD, SH_PS, SH_BASH, SH_CYGWIN, SH_SHELLHOST } shell_type = SH_OTHER;
+			/* get shell type */
+			if (strstr(s->pw->pw_shell, "system32\\cmd"))
+				shell_type = SH_CMD;
+			else if (strstr(s->pw->pw_shell, "powershell"))
+				shell_type = SH_PS;
+			else if (strstr(s->pw->pw_shell, "ssh-shellhost"))
+				shell_type = SH_SHELLHOST;
+			else if (strstr(s->pw->pw_shell, "\\bash"))
+				shell_type = SH_BASH;
+			else if (strstr(s->pw->pw_shell, "cygwin"))
+				shell_type = SH_CYGWIN;
+
+			if (shell_type == SH_PS || shell_type == SH_BASH ||
+				shell_type == SH_CYGWIN)
 				escape = TRUE;
 
-			if (shell_command_option) {
+			if (shell_command_option)
 				spawn_argv[index++] = shell_command_option;
-			}
-			else if (strstr(s->pw->pw_shell, "system32\\cmd")) {
+			else if (shell_type == SH_CMD)
 				spawn_argv[index++] = "/c";
-			}
-			else if (strstr(s->pw->pw_shell, "powershell") ||
-				strstr(s->pw->pw_shell, "\\bash") ||
-				strstr(s->pw->pw_shell, "cygwin") ||
-				strstr(s->pw->pw_shell, "ssh-shellhost")) {
+			else if (shell_type == SH_PS || shell_type == SH_BASH ||
+				shell_type == SH_CYGWIN || shell_type == SH_SHELLHOST)
 				spawn_argv[index++] = "-c";
-			}
+
 			spawn_argv[index] = exec_command;
 		}
 

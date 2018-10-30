@@ -1190,8 +1190,8 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 						int addition_backslash = 0;
 						int backslash_count = 0;
 						/*
-						Backslashes are interpreted literally, unless they immediately
-						precede a double quotation mark.
+						* Backslashes are interpreted literally, unless they immediately
+						* precede a double quotation mark.
 						*/
 						while (backslash != NULL && *backslash == '\\') {
 							if ((backslash + 1) != NULL && *(backslash + 1) == '\"') {
