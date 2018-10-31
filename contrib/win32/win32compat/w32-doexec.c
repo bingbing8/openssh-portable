@@ -57,7 +57,7 @@ extern ServerOptions options;
 extern struct sshauthopt *auth_opts;
 char **
 do_setup_env_proxy(struct ssh *, Session *, const char *);
-int posix_spawn_internal(pid_t *pidp, const char *path, const posix_spawn_file_actions_t *file_actions, const posix_spawnattr_t *attrp, char *const argv[], char *const envp[], HANDLE user_token, BOOLEAN prepend_module_path, BOOLEAN escape);
+int exec_command_with_pty(int * pid, char* cmd, int in, int out, int err, unsigned int col, unsigned int row, int ttyfd);
 
 /*
 * do_exec* on Windows
@@ -245,11 +245,66 @@ cleanup:
 	return ret;
 }
 
+static char *
+build_exec_command(const char * command)
+{
+	enum cmd_type { CMD_OTHER, CMD_SFTP, CMD_SCP } command_type = CMD_OTHER;
+	char *cmd_sp = NULL;
+	int len = 0, command_len;
+	const char *command_args = NULL;
+
+	if (!command)
+		return NULL;
+
+	command_len = (int)strlen(command);
+	/*TODO - replace numbers below with readable compile time operators*/
+	if (command_len >= 13 && _memicmp(command, "internal-sftp", 13) == 0) {
+		command_type = CMD_SFTP;
+		command_args = command + 13;
+	}
+	else if (command_len >= 11 && _memicmp(command, "sftp-server", 11) == 0) {
+		command_type = CMD_SFTP;
+
+		/* account for possible .exe extension */
+		if (command_len >= 15 && _memicmp(command + 11, ".exe", 4) == 0)
+			command_args = command + 15;
+		else
+			command_args = command + 11;
+	}
+	else if (command_len >= 3 && _memicmp(command, "scp", 3) == 0) {
+		command_type = CMD_SCP;
+
+		/* account for possible .exe extension */
+		if (command_len >= 7 && _memicmp(command + 3, ".exe", 4) == 0)
+			command_args = command + 7;
+		else
+			command_args = command + 3;
+	}
+
+	len = command_len + 5; /* account for possible .exe addition and null term */
+	if ((cmd_sp = malloc(len)) == NULL) {
+		errno = ENOMEM;
+		return NULL;
+	}
+	memset(cmd_sp, '\0', len);
+	if (command_type == CMD_SCP) {
+		strcpy_s(cmd_sp, len, "scp.exe");
+		strcat_s(cmd_sp, len, command_args);
+	}
+	else if (command_type == CMD_SFTP) {
+		strcpy_s(cmd_sp, len, "sftp-server.exe");
+		strcat_s(cmd_sp, len, command_args);
+	}
+	else
+		strcpy_s(cmd_sp, len, command);
+	return cmd_sp;
+}
 int do_exec_windows(struct ssh *ssh, Session *s, const char *command, int pty) {
 	int pipein[2], pipeout[2], pipeerr[2], r, ret = -1;
-	char *exec_command = NULL;
+	char *exec_command = NULL, *posix_cmd_input = NULL, *shell = NULL;
 	HANDLE job = NULL, process_handle;
 	extern char* shell_command_option;
+	extern BOOLEAN arg_escape;
 
 	/* Create three pipes for stdin, stdout and stderr */
 	if (pipe(pipein) == -1 || pipe(pipeout) == -1 || pipe(pipeerr) == -1)
@@ -290,13 +345,41 @@ int do_exec_windows(struct ssh *ssh, Session *s, const char *command, int pty) {
 	JOBOBJECT_EXTENDED_LIMIT_INFORMATION job_info;
 	HANDLE job_dup;
 	pid_t pid = -1;
-	exec_command = build_command_string(command);
-	debug3("shell: %s", s->pw->pw_shell);
-	debug3("command: %s with %spty", exec_command, pty ? " " : "no ");
+	char * shell_option = NULL;
+	int shell_len = 0;
+	/*account for the quotes and null*/
+	shell_len = strlen(s->pw->pw_shell) + 2 + 1;
+	if ((shell = malloc(shell_len)) == NULL) {
+		errno = ENOMEM;
+		goto cleanup;
+	}
+	sprintf_s(shell, shell_len, "\"%s\"", s->pw->pw_shell);
+	debug3("shell: %s", shell);
+
+	enum sh_type { SH_OTHER, SH_CMD, SH_PS, SH_BASH, SH_CYGWIN, SH_SHELLHOST } shell_type = SH_OTHER;
+	/* get shell type */
+	if (strstr(s->pw->pw_shell, "system32\\cmd"))
+		shell_type = SH_CMD;
+	else if (strstr(s->pw->pw_shell, "powershell"))
+		shell_type = SH_PS;
+	else if (strstr(s->pw->pw_shell, "ssh-shellhost"))
+		shell_type = SH_SHELLHOST;
+	else if (strstr(s->pw->pw_shell, "\\bash"))
+		shell_type = SH_BASH;
+	else if (strstr(s->pw->pw_shell, "cygwin"))
+		shell_type = SH_CYGWIN;
+
+	if (shell_command_option)
+		shell_option = shell_command_option;
+	else if (shell_type == SH_CMD)
+		shell_option = "/c";
+	else
+		shell_option = "-c";
+	debug3("shell_option: %s", shell_option);
 
 	if (pty) {
 		fcntl(s->ptyfd, F_SETFD, FD_CLOEXEC);
-		if (exec_command_with_pty(&pid, s->pw->pw_shell, pipein[0], pipeout[1], pipeerr[1], s->col, s->row, s->ttyfd) == -1)
+		if (exec_command_with_pty(&pid, shell, pipein[0], pipeout[1], pipeerr[1], s->col, s->row, s->ttyfd) == -1)
 			goto cleanup;
 		close(s->ttyfd);
 		s->ttyfd = -1;
@@ -304,37 +387,37 @@ int do_exec_windows(struct ssh *ssh, Session *s, const char *command, int pty) {
 	else {
 		posix_spawn_file_actions_t actions;
 		char *spawn_argv[4] = { NULL, };
-		spawn_argv[0] = s->pw->pw_shell;
-		BOOLEAN escape = FALSE;
-		int index = 1;
-		if (exec_command) {
-			enum sh_type { SH_OTHER, SH_CMD, SH_PS, SH_BASH, SH_CYGWIN, SH_SHELLHOST } shell_type = SH_OTHER;
-			/* get shell type */
-			if (strstr(s->pw->pw_shell, "system32\\cmd"))
-				shell_type = SH_CMD;
-			else if (strstr(s->pw->pw_shell, "powershell"))
-				shell_type = SH_PS;
-			else if (strstr(s->pw->pw_shell, "ssh-shellhost"))
-				shell_type = SH_SHELLHOST;
-			else if (strstr(s->pw->pw_shell, "\\bash"))
-				shell_type = SH_BASH;
-			else if (strstr(s->pw->pw_shell, "cygwin"))
-				shell_type = SH_CYGWIN;
-
-			if (shell_type == SH_PS || shell_type == SH_BASH ||
-				shell_type == SH_CYGWIN)
-				escape = TRUE;
-
-			if (shell_command_option)
-				spawn_argv[index++] = shell_command_option;
-			else if (shell_type == SH_CMD)
-				spawn_argv[index++] = "/c";
-			else if (shell_type == SH_PS || shell_type == SH_BASH ||
-				shell_type == SH_CYGWIN || shell_type == SH_SHELLHOST)
-				spawn_argv[index++] = "-c";
-
-			spawn_argv[index] = exec_command;
+		exec_command = build_exec_command(command);
+		debug3("exec_command: %s", exec_command);
+		if (exec_command == NULL)
+			goto cleanup;
+		if (shell_type == SH_PS || shell_type == SH_BASH ||
+			shell_type == SH_CYGWIN || (shell_type == SH_OTHER) && arg_escape) {
+			spawn_argv[0] = shell;
+			spawn_argv[1] = shell_option;
+			spawn_argv[2] = exec_command;
 		}
+		else {
+			/*
+			 * no escaping needed for cmd and ssh-shellhost, or escaping is disabled
+			 * in registry; pass shell, shell option, and quoted command as cmd path
+			 * of posix_spawn to avoid escaping
+			 */
+			int posix_cmd_input_len = strlen(shell) + 1;
+			posix_cmd_input_len += strlen(shell_option) + 1;
+			/* account for " around and null */
+			posix_cmd_input_len += strlen(exec_command) + 2 + 1;
+
+			if ((posix_cmd_input = malloc(posix_cmd_input_len)) == NULL) {
+				errno = ENOMEM;
+				goto cleanup;
+			}
+			sprintf_s(posix_cmd_input, posix_cmd_input_len, "%s %s \"%s\"",
+				shell, shell_option, exec_command);
+			spawn_argv[0] = posix_cmd_input;
+		}
+		debug3("arg escape option: %s", arg_escape ? "TRUE":"FALSE");
+		debug3("spawn_argv[0]: %s", spawn_argv[0]);
 
 		if (posix_spawn_file_actions_init(&actions) != 0 ||
 			posix_spawn_file_actions_adddup2(&actions, pipein[0], STDIN_FILENO) != 0 ||
@@ -344,9 +427,9 @@ int do_exec_windows(struct ssh *ssh, Session *s, const char *command, int pty) {
 			error("posix_spawn initialization failed");
 			goto cleanup;
 		}
-		if (posix_spawn_internal(&pid, spawn_argv[0], &actions, NULL, spawn_argv, NULL, NULL, TRUE, escape) != 0) {
+		if (posix_spawn(&pid, spawn_argv[0], &actions, NULL, spawn_argv, NULL, NULL) != 0) {
 			errno = EOTHER;
-			error("spawn_child_internal: %s", strerror(errno));
+			error("posix_spawn: %s", strerror(errno));
 			goto cleanup;
 		}
 		posix_spawn_file_actions_destroy(&actions);
@@ -404,8 +487,12 @@ int do_exec_windows(struct ssh *ssh, Session *s, const char *command, int pty) {
 	ret = 0;
 
 cleanup:
-	if (!exec_command)
+	if (exec_command)
 		free(exec_command);
+	if (posix_cmd_input)
+		free(posix_cmd_input);
+	if (shell)
+		free(shell);
 	if (job)
 		CloseHandle(job);
 

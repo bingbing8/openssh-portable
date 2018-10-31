@@ -1584,60 +1584,164 @@ cleanup:
 	return ret;
 }
 
-char * build_command_string( const char * command)
+
+/*
+ * cmd is internally decoarated with a set of '"'
+ * to account for any spaces within the commandline
+ * the double quotes and backslash is escaped if needed 
+ * this decoration is done only when additional arguments are passed in argv
+*/
+char *
+build_commandline_string(const char* cmd, char *const argv[], BOOLEAN prepend_module_path)
 {
-	enum cmd_type { CMD_OTHER, CMD_SFTP, CMD_SCP } command_type = CMD_OTHER;
-	char *cmd_sp = NULL;
-	int len = 0, command_len;
-	const char *command_args = NULL;
+	char *cmdline, *t, *tmp = NULL, *path = NULL;
+	char * const *t1;
+	DWORD cmdline_len = 0, path_len = 0;
+	int add_module_path = 0, ret = -1;
 
-	if (!command)
-		return NULL;
-
-	command_len = (int)strlen(command);
-	/*TODO - replace numbers below with readable compile time operators*/
-	if (command_len >= 13 && _memicmp(command, "internal-sftp", 13) == 0) {
-		command_type = CMD_SFTP;
-		command_args = command + 13;
-	}
-	else if (command_len >= 11 && _memicmp(command, "sftp-server", 11) == 0) {
-		command_type = CMD_SFTP;
-
-		/* account for possible .exe extension */
-		if (command_len >= 15 && _memicmp(command + 11, ".exe", 4) == 0)
-			command_args = command + 15;
-		else
-			command_args = command + 11;
-	}
-	else if (command_len >= 3 && _memicmp(command, "scp", 3) == 0) {
-		command_type = CMD_SCP;
-
-		/* account for possible .exe extension */
-		if (command_len >= 7 && _memicmp(command + 3, ".exe", 4) == 0)
-			command_args = command + 7;
-		else
-			command_args = command + 3;
-	}
-
-	len = command_len + 5; /* account for possible .exe addition and null term */
-	if ((cmd_sp = malloc(len)) == NULL) {
-		errno = ENOMEM;
+	if (!cmd) {
+		error("%s invalid argument cmd:%s", __func__, cmd);
 		return NULL;
 	}
-	memset(cmd_sp, '\0', len);
-	if (command_type == CMD_SCP) {
-		strcpy_s(cmd_sp, len, "scp.exe");
-		strcat_s(cmd_sp, len, command_args);
+
+	if (!(path = _strdup(cmd))) {
+		error("failed to duplicate %s", cmd);
+		return NULL;
 	}
-	else if (command_type == CMD_SFTP) {
-		strcpy_s(cmd_sp, len, "sftp-server.exe");
-		strcat_s(cmd_sp, len, command_args);
+
+	path_len = (DWORD)strlen(path) + 1;
+
+	if (is_bash_test_env()) {
+		memset(path, 0, path_len);
+		bash_to_win_path(cmd, path, path_len);
 	}
+
+	if (!is_absolute_path(path) && prepend_module_path)
+		add_module_path = 1;
+
+	/* compute total cmdline len*/
+	if (add_module_path)
+		cmdline_len += (DWORD)strlen(__progdir) + 1 + (DWORD)strlen(path) + 1 + 2;
 	else
-		strcpy_s(cmd_sp, len, command);
-	return cmd_sp;
-}
+		cmdline_len += (DWORD)strlen(path) + 1 + 2;
 
+	if (argv) {
+		t1 = argv;
+		while (*t1) {
+			char *p = *t1++;
+			for (int i = 0; i < (int)strlen(p); i++) {
+				if (p[i] == '\\') {
+					char * backslash = p + i;
+					int addition_backslash = 0;
+					int backslash_count = 0;
+					/*
+					Backslashes are interpreted literally, unless they immediately
+					precede a double quotation mark.
+					*/
+					while (*backslash == '\\') {
+						if (*(backslash + 1) == '\"') {
+							addition_backslash = 1;
+							break;
+						}
+						backslash_count++;
+						backslash++;
+					}
+					cmdline_len += backslash_count * (addition_backslash + 1);
+					i += backslash_count - 1;
+				}
+				else if (p[i] == '\"')
+					/* backslash will be added for every double quote.*/
+					cmdline_len += 2;
+				else
+					cmdline_len++;
+			}
+			cmdline_len += 1 + 2; /*for "around cmd arg and traling space*/
+		}
+	}
+
+	if ((cmdline = malloc(cmdline_len)) == NULL) {
+		errno = ENOMEM;
+		goto cleanup;
+	}
+
+	/*For user defined cmd, no need to add quotes*/
+	if (!add_module_path)
+		strcpy_s(cmdline, cmdline_len, path);
+	else {
+		t = cmdline;
+		*t++ = '\"';
+		/* add current module path to start if needed */
+		memcpy(t, __progdir, strlen(__progdir));
+		t += strlen(__progdir);
+		*t++ = '\\';
+		memcpy(t, path, strlen(path));
+		t += strlen(path);
+		*t++ = '\"';
+		*t = '\0';
+	}
+	t = cmdline + strlen(cmdline);
+
+	if (argv) {
+		t1 = argv;
+		while (*t1) {
+			*t++ = ' ';
+			char * p1 = *t1++;
+			BOOL add_quotes = FALSE;
+			/* leave as is if the command is surrounded by single quotes*/
+			if (p1[0] != '\'')
+				for (int i = 0; i < (int)strlen(p1); i++) {
+					if (p1[i] == ' ') {
+						add_quotes = TRUE;
+						break;
+					}
+				}
+			if (add_quotes)
+				*t++ = '\"';
+			if (!add_quotes) {
+				memcpy(t, p1, strlen(p1));
+				t += strlen(p1);
+			}
+			else {
+				for (int i = 0; i < (int)strlen(p1); i++) {
+					if (p1[i] == '\\') {
+						char * backslash = p1 + i;
+						int addition_backslash = 0;
+						int backslash_count = 0;
+						/*
+						* Backslashes are interpreted literally, unless they immediately
+						* precede a double quotation mark.
+						*/
+						while (backslash != NULL && *backslash == '\\') {
+							if ((backslash + 1) != NULL && *(backslash + 1) == '\"') {
+								addition_backslash = 1;
+								break;
+							}
+							backslash_count++;
+							backslash++;
+						}
+						i += backslash_count - 1;
+						while ((backslash_count--) * (addition_backslash + 1))
+							*t++ = '\\';
+					}
+					else if (p1[i] == '\"') {
+						/* Add backslash for every double quote.*/
+						*t++ = '\\';
+						*t++ = '\"';
+					}
+					else
+						*t++ = p1[i];
+				}
+			}
+			if (add_quotes)
+				*t++ = '\"';
+		}
+	}
+	*t = '\0';
+cleanup:
+	if (path)
+		free(path);
+	return cmdline;
+}
 BOOL
 is_bash_test_env()
 {

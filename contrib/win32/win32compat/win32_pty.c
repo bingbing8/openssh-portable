@@ -112,8 +112,6 @@ int exec_command_with_pty(int * pid, char* cmd, int in, int out, int err, unsign
 
 	memset(&si, 0, sizeof(STARTUPINFO));
 	si.cb = sizeof(STARTUPINFO);
-	si.dwXSize = 5;
-	si.dwYSize = 5;
 	si.dwXCountChars = col;
 	si.dwYCountChars = row;
 	si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESIZE | STARTF_USECOUNTCHARS;

@@ -234,6 +234,14 @@ int wmain(int argc, wchar_t **wargv) {
 	/* change current directory to sshd.exe root */
 	_wchdir(__wprogdir);
 
+	/*
+	* we want to launch scp and sftp executables from the binary directory
+	* that sshd is hosted in. This will facilitate hosting and evaluating
+	* multiple versions of OpenSSH at the same time.
+	* it does not work well for powershell, cygwin, etc if program path is
+	* prepended to executable directory. 
+	* To achive above, PATH is set to process environment
+	*/
 	_wdupenv_s(&path_value, &len, L"PATH");
 	if (!path_value || (wcsstr(path_value, __wprogdir)) == NULL) {
 		path_new_len = wcslen(__wprogdir) + wcslen(path_value) + 2;
