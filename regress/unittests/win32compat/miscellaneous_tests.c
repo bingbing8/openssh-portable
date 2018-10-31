@@ -415,7 +415,7 @@ test_build_commandline_string()
 void
 miscellaneous_tests()
 {
-	test_ioctl();
+	//test_ioctl();
 	test_path_conversion_utilities();
 	test_sanitizedpath();
 	test_pw();
