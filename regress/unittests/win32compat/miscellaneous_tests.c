@@ -317,15 +317,111 @@ test_chroot()
 	//_wsystem(L"RD /S /Q chroot-testdir >NUL 2>&1");
 }
 
+char * build_exec_command(const char * command);
+void
+test_build_exec_command()
+{
+	char *out;
+
+	TEST_START("arg is null");
+	out = build_exec_command(NULL);
+	ASSERT_PTR_EQ(out, NULL);
+	TEST_DONE();
+
+	TEST_START("scp tests");
+	out = build_exec_command("sCp -arg");	
+	ASSERT_STRING_EQ(out, "scp.exe -arg");
+	free(out);
+	out = build_exec_command("sCp.exe -arg1 -arg2");
+	ASSERT_STRING_EQ(out, "scp.exe -arg1 -arg2");
+	free(out);
+	TEST_DONE();
+
+	TEST_START("sftp tests");
+	out = build_exec_command("internal-sftp \"arg1 arg2\"");
+	ASSERT_STRING_EQ(out, "sftp-server.exe \"arg1 arg2\"");
+	free(out);
+	out = build_exec_command("SFTP-server.exe -arg");
+	ASSERT_STRING_EQ(out, "sftp-server.exe -arg");
+	free(out);
+	out = build_exec_command("sftp-SERVER -arg");	
+	ASSERT_STRING_EQ(out, "sftp-server.exe -arg");
+	free(out);
+	TEST_DONE();
+}
+
+char *
+build_commandline_string(const char* cmd, char *const argv[], BOOLEAN prepend_module_path);
+void
+test_build_commandline_string()
+{
+	char *out, in[PATH_MAX], buf[PATH_MAX];
+
+	TEST_START("cmd is null");
+	out = build_commandline_string(NULL, NULL, TRUE);
+	ASSERT_PTR_EQ(out, NULL);
+	TEST_DONE();
+
+	TEST_START("arg is null");
+	out = build_commandline_string("\"c:\\windows\\system32\\cmd.exe\" /c arg", NULL, TRUE);
+	ASSERT_STRING_EQ(out, "\"c:\\windows\\system32\\cmd.exe\" /c arg");
+	free(out);
+	out = build_commandline_string("cmd.exe /c ping.exe", NULL, FALSE);
+	ASSERT_STRING_EQ(out, "cmd.exe /c ping.exe");
+	sprintf_s(in, PATH_MAX, "\"%s\\%s\"", __progdir, "ssh-shellhost.exe\" -c \"arg1 arg2\"");
+	out = build_commandline_string(in, NULL, TRUE);
+	ASSERT_STRING_EQ(out, in);
+	free(out);
+	out = build_commandline_string("\"cmd.exe\" /c \"arg1 arg2\"", NULL, FALSE);
+	ASSERT_STRING_EQ(out, "\"cmd.exe\" /c \"arg1 arg2\"");
+	free(out);
+	TEST_DONE();
+
+	char *argv[4] = { NULL, };
+	argv[0] = "\"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\"";
+	argv[1] = "-c";
+	argv[2] = "arg1 arg2";
+	TEST_START("arg is not null");
+	out = build_commandline_string(argv[0], argv + 1, TRUE);
+	sprintf_s(buf, PATH_MAX, "%s %s %s", argv[0], argv[1], "\"arg1 arg2\"");
+	ASSERT_STRING_EQ(out, buf);
+	free(out);
+	argv[0] = "\"C:\\myfolder\\bash.exe\"";
+	argv[2] = "\"arg1\\arg2\"";
+	out = build_commandline_string(argv[0], argv + 1, TRUE);
+	sprintf_s(buf, PATH_MAX, "%s %s %s", argv[0], argv[1], "\\\"arg1\\arg2\\\"");
+	ASSERT_STRING_EQ(out, buf);
+	free(out);
+	argv[2] = "\"arg1 arg2\\\"";
+	out = build_commandline_string(argv[0], argv + 1, TRUE);
+	sprintf_s(buf, PATH_MAX, "%s %s %s", argv[0], argv[1], "\"\\\"arg1 arg2\\\\\\\"\"");
+	ASSERT_STRING_EQ(out, buf);
+	free(out);
+	argv[0] = "\"c:\\cygwin64\\bin\\ba.exe\"";
+	argv[2] = "arg1\\arg2";
+	out = build_commandline_string(argv[0], argv + 1, TRUE);
+	sprintf_s(buf, PATH_MAX, "%s %s %s", argv[0], argv[1], "arg1\\arg2");
+	ASSERT_STRING_EQ(out, buf);
+	free(out);
+	argv[0] = "\"c:\\cygwin64\\bin\\ba.exe\"";
+	argv[2] = "'arg1 \\arg2\\\"'";
+	out = build_commandline_string(argv[0], argv + 1, TRUE);
+	sprintf_s(buf, PATH_MAX, "%s %s %s", argv[0], argv[1], "'arg1 \\arg2\\\\\\\"'");
+	ASSERT_STRING_EQ(out, buf);
+	free(out);
+	TEST_DONE();
+}
 
 void
 miscellaneous_tests()
 {
-	//test_ioctl();
+	test_ioctl();
 	test_path_conversion_utilities();
 	test_sanitizedpath();
 	test_pw();
 	test_realpath();
 	test_statvfs();
 	test_chroot();
+	test_build_exec_command();
+	test_build_commandline_string();
 }

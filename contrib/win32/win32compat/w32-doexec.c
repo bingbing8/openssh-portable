@@ -58,6 +58,7 @@ extern struct sshauthopt *auth_opts;
 char **
 do_setup_env_proxy(struct ssh *, Session *, const char *);
 int exec_command_with_pty(int * pid, char* cmd, int in, int out, int err, unsigned int col, unsigned int row, int ttyfd);
+char * build_exec_command(const char * command);
 
 /*
 * do_exec* on Windows
@@ -245,60 +246,6 @@ cleanup:
 	return ret;
 }
 
-static char *
-build_exec_command(const char * command)
-{
-	enum cmd_type { CMD_OTHER, CMD_SFTP, CMD_SCP } command_type = CMD_OTHER;
-	char *cmd_sp = NULL;
-	int len = 0, command_len;
-	const char *command_args = NULL;
-
-	if (!command)
-		return NULL;
-
-	command_len = (int)strlen(command);
-	/*TODO - replace numbers below with readable compile time operators*/
-	if (command_len >= 13 && _memicmp(command, "internal-sftp", 13) == 0) {
-		command_type = CMD_SFTP;
-		command_args = command + 13;
-	}
-	else if (command_len >= 11 && _memicmp(command, "sftp-server", 11) == 0) {
-		command_type = CMD_SFTP;
-
-		/* account for possible .exe extension */
-		if (command_len >= 15 && _memicmp(command + 11, ".exe", 4) == 0)
-			command_args = command + 15;
-		else
-			command_args = command + 11;
-	}
-	else if (command_len >= 3 && _memicmp(command, "scp", 3) == 0) {
-		command_type = CMD_SCP;
-
-		/* account for possible .exe extension */
-		if (command_len >= 7 && _memicmp(command + 3, ".exe", 4) == 0)
-			command_args = command + 7;
-		else
-			command_args = command + 3;
-	}
-
-	len = command_len + 5; /* account for possible .exe addition and null term */
-	if ((cmd_sp = malloc(len)) == NULL) {
-		errno = ENOMEM;
-		return NULL;
-	}
-	memset(cmd_sp, '\0', len);
-	if (command_type == CMD_SCP) {
-		strcpy_s(cmd_sp, len, "scp.exe");
-		strcat_s(cmd_sp, len, command_args);
-	}
-	else if (command_type == CMD_SFTP) {
-		strcpy_s(cmd_sp, len, "sftp-server.exe");
-		strcat_s(cmd_sp, len, command_args);
-	}
-	else
-		strcpy_s(cmd_sp, len, command);
-	return cmd_sp;
-}
 int do_exec_windows(struct ssh *ssh, Session *s, const char *command, int pty) {
 	int pipein[2], pipeout[2], pipeerr[2], r, ret = -1;
 	char *exec_command = NULL, *posix_cmd_input = NULL, *shell = NULL;
@@ -427,7 +374,7 @@ int do_exec_windows(struct ssh *ssh, Session *s, const char *command, int pty) {
 			error("posix_spawn initialization failed");
 			goto cleanup;
 		}
-		if (posix_spawn(&pid, spawn_argv[0], &actions, NULL, spawn_argv, NULL, NULL) != 0) {
+		if (posix_spawn(&pid, spawn_argv[0], &actions, NULL, spawn_argv, NULL) != 0) {
 			errno = EOTHER;
 			error("posix_spawn: %s", strerror(errno));
 			goto cleanup;

@@ -285,9 +285,6 @@
     <ClInclude Include="$(OpenSSH-Src-Path)xmalloc.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="$(OpenSSH-Src-Path)pal-doexec.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="$(OpenSSH-Src-Path)clientloop.c">

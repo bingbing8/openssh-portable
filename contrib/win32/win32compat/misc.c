@@ -1583,7 +1583,61 @@ cleanup:
 
 	return ret;
 }
+/* Interpret scp and sftp executables*/
+char *
+build_exec_command(const char * command)
+{
+	enum cmd_type { CMD_OTHER, CMD_SFTP, CMD_SCP } command_type = CMD_OTHER;
+	char *cmd_sp = NULL;
+	int len = 0, command_len;
+	const char *command_args = NULL;
 
+	if (!command)
+		return NULL;
+
+	command_len = (int)strlen(command);
+	/*TODO - replace numbers below with readable compile time operators*/
+	if (command_len >= 13 && _memicmp(command, "internal-sftp", 13) == 0) {
+		command_type = CMD_SFTP;
+		command_args = command + 13;
+	}
+	else if (command_len >= 11 && _memicmp(command, "sftp-server", 11) == 0) {
+		command_type = CMD_SFTP;
+
+		/* account for possible .exe extension */
+		if (command_len >= 15 && _memicmp(command + 11, ".exe", 4) == 0)
+			command_args = command + 15;
+		else
+			command_args = command + 11;
+	}
+	else if (command_len >= 3 && _memicmp(command, "scp", 3) == 0) {
+		command_type = CMD_SCP;
+
+		/* account for possible .exe extension */
+		if (command_len >= 7 && _memicmp(command + 3, ".exe", 4) == 0)
+			command_args = command + 7;
+		else
+			command_args = command + 3;
+	}
+
+	len = command_len + 5; /* account for possible .exe addition and null term */
+	if ((cmd_sp = malloc(len)) == NULL) {
+		errno = ENOMEM;
+		return NULL;
+	}
+	memset(cmd_sp, '\0', len);
+	if (command_type == CMD_SCP) {
+		strcpy_s(cmd_sp, len, "scp.exe");
+		strcat_s(cmd_sp, len, command_args);
+	}
+	else if (command_type == CMD_SFTP) {
+		strcpy_s(cmd_sp, len, "sftp-server.exe");
+		strcat_s(cmd_sp, len, command_args);
+	}
+	else
+		strcpy_s(cmd_sp, len, command);
+	return cmd_sp;
+}
 
 /*
  * cmd is internally decoarated with a set of '"'
@@ -1631,22 +1685,22 @@ build_commandline_string(const char* cmd, char *const argv[], BOOLEAN prepend_mo
 			char *p = *t1++;
 			for (int i = 0; i < (int)strlen(p); i++) {
 				if (p[i] == '\\') {
-					char * backslash = p + i;
-					int addition_backslash = 0;
+					char * b = p + i;
+					int additional_backslash = 0;
 					int backslash_count = 0;
 					/*
 					Backslashes are interpreted literally, unless they immediately
 					precede a double quotation mark.
 					*/
-					while (*backslash == '\\') {
-						if (*(backslash + 1) == '\"') {
-							addition_backslash = 1;
+					while (b != NULL && *b == '\\') {
+						backslash_count++;
+						b++;
+						if (b != NULL &&  *b == '\"') {
+							additional_backslash = 1;
 							break;
 						}
-						backslash_count++;
-						backslash++;
 					}
-					cmdline_len += backslash_count * (addition_backslash + 1);
+					cmdline_len += backslash_count * (additional_backslash + 1);
 					i += backslash_count - 1;
 				}
 				else if (p[i] == '\"')
@@ -1697,40 +1751,35 @@ build_commandline_string(const char* cmd, char *const argv[], BOOLEAN prepend_mo
 				}
 			if (add_quotes)
 				*t++ = '\"';
-			if (!add_quotes) {
-				memcpy(t, p1, strlen(p1));
-				t += strlen(p1);
-			}
-			else {
-				for (int i = 0; i < (int)strlen(p1); i++) {
-					if (p1[i] == '\\') {
-						char * backslash = p1 + i;
-						int addition_backslash = 0;
-						int backslash_count = 0;
-						/*
-						* Backslashes are interpreted literally, unless they immediately
-						* precede a double quotation mark.
-						*/
-						while (backslash != NULL && *backslash == '\\') {
-							if ((backslash + 1) != NULL && *(backslash + 1) == '\"') {
-								addition_backslash = 1;
-								break;
-							}
-							backslash_count++;
-							backslash++;
+			for (int i = 0; i < (int)strlen(p1); i++) {
+				if (p1[i] == '\\') {
+					char * b = p1 + i;
+					int additional_backslash = 0;
+					int backslash_count = 0;
+					/*
+					* Backslashes are interpreted literally, unless they immediately
+					* precede a double quotation mark.
+					*/
+					while (b != NULL && *b == '\\') {
+						backslash_count++;
+						b++;
+						if (b != NULL && *b == '\"') {
+							additional_backslash = 1;
+							break;
 						}
-						i += backslash_count - 1;
-						while ((backslash_count--) * (addition_backslash + 1))
-							*t++ = '\\';
 					}
-					else if (p1[i] == '\"') {
-						/* Add backslash for every double quote.*/
+					i += backslash_count - 1;
+					int escaped_backslash_count = backslash_count * (additional_backslash + 1);
+					while (escaped_backslash_count--)
 						*t++ = '\\';
-						*t++ = '\"';
-					}
-					else
-						*t++ = p1[i];
 				}
+				else if (p1[i] == '\"') {
+					/* Add backslash for every double quote.*/
+					*t++ = '\\';
+					*t++ = '\"';
+				}
+				else
+					*t++ = p1[i];
 			}
 			if (add_quotes)
 				*t++ = '\"';
