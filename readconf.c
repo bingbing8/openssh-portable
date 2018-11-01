@@ -1,4 +1,4 @@
-/* $OpenBSD: readconf.c,v 1.297 2018/08/12 20:19:13 djm Exp $ */
+/* $OpenBSD: readconf.c,v 1.300 2018/10/05 14:26:09 naddy Exp $ */
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
@@ -173,7 +173,7 @@ typedef enum {
 	oCanonicalizeFallbackLocal, oCanonicalizePermittedCNAMEs,
 	oStreamLocalBindMask, oStreamLocalBindUnlink, oRevokedHostKeys,
 	oFingerprintHash, oUpdateHostkeys, oHostbasedKeyTypes,
-	oPubkeyAcceptedKeyTypes, oProxyJump,
+	oPubkeyAcceptedKeyTypes, oCASignatureAlgorithms, oProxyJump,
 	oIgnore, oIgnoredUnknownOption, oDeprecated, oUnsupported
 } OpCodes;
 
@@ -267,6 +267,7 @@ static struct {
 	{ "dynamicforward", oDynamicForward },
 	{ "preferredauthentications", oPreferredAuthentications },
 	{ "hostkeyalgorithms", oHostKeyAlgorithms },
+	{ "casignaturealgorithms", oCASignatureAlgorithms },
 	{ "bindaddress", oBindAddress },
 	{ "bindinterface", oBindInterface },
 	{ "clearallforwardings", oClearAllForwardings },
@@ -478,20 +479,13 @@ default_ssh_port(void)
 static int
 execute_in_shell(const char *cmd)
 {
-#ifdef WINDOWS
-	int retVal = -1;
-	wchar_t *cmd_w = utf8_to_utf16(cmd);
-
-	if (cmd_w) {
-		retVal = _wsystem(cmd_w);
-		free(cmd_w);
-	}
-
-	return retVal;
-#else /* !WINDOWS */
 	char *shell;
 	pid_t pid;
 	int devnull, status;
+
+#ifdef WINDOWS
+	return system(cmd);
+#endif
 
 	if ((shell = getenv("SHELL")) == NULL)
 		shell = _PATH_BSHELL;
@@ -543,7 +537,6 @@ execute_in_shell(const char *cmd)
 	}
 	debug3("command returned status %d", WEXITSTATUS(status));
 	return WEXITSTATUS(status);
-#endif /* !WINDOWS */
 }
 
 /*
@@ -1170,7 +1163,20 @@ parse_command:
 		return 0;
 
 	case oPort:
-		intptr = &options->port;
+		arg = strdelim(&s);
+		if (!arg || *arg == '\0')
+			fatal("%.200s line %d: Missing argument.",
+			    filename, linenum);
+		value = a2port(arg);
+		if (value <= 0)
+			fatal("%.200s line %d: Bad port '%s'.",
+			    filename, linenum, arg);
+		if (*activep && options->port == -1)
+			options->port = value;
+		break;
+
+	case oConnectionAttempts:
+		intptr = &options->connection_attempts;
 parse_int:
 		arg = strdelim(&s);
 		if ((errstr = atoi_err(arg, &value)) != NULL)
@@ -1179,10 +1185,6 @@ parse_int:
 		if (*activep && *intptr == -1)
 			*intptr = value;
 		break;
-
-	case oConnectionAttempts:
-		intptr = &options->connection_attempts;
-		goto parse_int;
 
 	case oCiphers:
 		arg = strdelim(&s);
@@ -1233,6 +1235,10 @@ parse_keytypes:
 		if (*activep && *charptr == NULL)
 			*charptr = xstrdup(arg);
 		break;
+
+	case oCASignatureAlgorithms:
+		charptr = &options->ca_sign_algorithms;
+		goto parse_keytypes;
 
 	case oLogLevel:
 		log_level_ptr = &options->log_level;
@@ -1708,7 +1714,18 @@ parse_keytypes:
 
 	case oIdentityAgent:
 		charptr = &options->identity_agent;
-		goto parse_string;
+		arg = strdelim(&s);
+		if (!arg || *arg == '\0')
+			fatal("%.200s line %d: Missing argument.",
+			    filename, linenum);
+		/* Extra validation if the string represents an env var. */
+		if (arg[0] == '$' && !valid_env_name(arg + 1)) {
+			fatal("%.200s line %d: Invalid environment name %s.",
+			    filename, linenum, arg);
+		}
+		if (*activep && *charptr == NULL)
+			*charptr = xstrdup(arg);
+		break;
 
 	case oDeprecated:
 		debug("%s line %d: Deprecated option \"%s\"",
@@ -1860,6 +1877,7 @@ initialize_options(Options * options)
 	options->macs = NULL;
 	options->kex_algorithms = NULL;
 	options->hostkeyalgorithms = NULL;
+	options->ca_sign_algorithms = NULL;
 	options->num_identity_files = 0;
 	options->num_certificate_files = 0;
 	options->hostname = NULL;
@@ -1948,7 +1966,7 @@ fill_default_options_for_canonicalization(Options *options)
 void
 fill_default_options(Options * options)
 {
-	char *all_cipher, *all_mac, *all_kex, *all_key;
+	char *all_cipher, *all_mac, *all_kex, *all_key, *all_sig;
 	int r;
 
 	if (options->forward_agent == -1)
@@ -2101,6 +2119,7 @@ fill_default_options(Options * options)
 	all_mac = mac_alg_list(',');
 	all_kex = kex_alg_list(',');
 	all_key = sshkey_alg_list(0, 0, 1, ',');
+	all_sig = sshkey_alg_list(0, 1, 1, ',');
 #define ASSEMBLE(what, defaults, all) \
 	do { \
 		if ((r = kex_assemble_names(&options->what, \
@@ -2112,11 +2131,13 @@ fill_default_options(Options * options)
 	ASSEMBLE(kex_algorithms, KEX_SERVER_KEX, all_kex);
 	ASSEMBLE(hostbased_key_types, KEX_DEFAULT_PK_ALG, all_key);
 	ASSEMBLE(pubkey_key_types, KEX_DEFAULT_PK_ALG, all_key);
+	ASSEMBLE(ca_sign_algorithms, SSH_ALLOWED_CA_SIGALGS, all_sig);
 #undef ASSEMBLE
 	free(all_cipher);
 	free(all_mac);
 	free(all_kex);
 	free(all_key);
+	free(all_sig);
 
 #define CLEAR_ON_NONE(v) \
 	do { \
@@ -2638,6 +2659,7 @@ dump_client_config(Options *o, const char *host)
 	dump_cfg_string(oIgnoreUnknown, o->ignored_unknown);
 	dump_cfg_string(oKbdInteractiveDevices, o->kbd_interactive_devices);
 	dump_cfg_string(oKexAlgorithms, o->kex_algorithms ? o->kex_algorithms : KEX_CLIENT_KEX);
+	dump_cfg_string(oCASignatureAlgorithms, o->ca_sign_algorithms ? o->ca_sign_algorithms : SSH_ALLOWED_CA_SIGALGS);
 	dump_cfg_string(oLocalCommand, o->local_command);
 	dump_cfg_string(oRemoteCommand, o->remote_command);
 	dump_cfg_string(oLogLevel, log_level_name(o->log_level));

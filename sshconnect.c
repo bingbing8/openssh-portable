@@ -1,4 +1,4 @@
-/* $OpenBSD: sshconnect.c,v 1.304 2018/07/27 05:34:42 dtucker Exp $ */
+/* $OpenBSD: sshconnect.c,v 1.305 2018/09/20 03:30:44 djm Exp $ */
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
@@ -107,16 +107,6 @@ static int
 ssh_proxy_fdpass_connect(struct ssh *ssh, const char *host, u_short port,
     const char *proxy_command)
 {
-#ifdef WINDOWS
-        fatal("proxy fdpass connect is not supported in Windows");
-	/* 
-	 * Unix logic relies on passing in ancillary data over domain sockets 
-	 * This concept does not exist in Windows. 
-	 * Possible implementation in Windows could have proxy_command return 
-	 * connection handle through IPC means
-	 */
-        return 0;
-#else /* !WINDOWS */
 	char *command_string;
 	int sp[2], sock;
 	pid_t pid;
@@ -186,7 +176,6 @@ ssh_proxy_fdpass_connect(struct ssh *ssh, const char *host, u_short port,
 		return -1; /* ssh_packet_set_connection logs error */
 
 	return 0;
-#endif /* !WINDOWS */
 }
 
 /*
@@ -772,19 +761,28 @@ confirm(const char *prompt)
 }
 
 static int
-check_host_cert(const char *host, const struct sshkey *host_key)
+check_host_cert(const char *host, const struct sshkey *key)
 {
 	const char *reason;
+	int r;
 
-	if (sshkey_cert_check_authority(host_key, 1, 0, host, &reason) != 0) {
+	if (sshkey_cert_check_authority(key, 1, 0, host, &reason) != 0) {
 		error("%s", reason);
 		return 0;
 	}
-	if (sshbuf_len(host_key->cert->critical) != 0) {
+	if (sshbuf_len(key->cert->critical) != 0) {
 		error("Certificate for %s contains unsupported "
 		    "critical options(s)", host);
 		return 0;
 	}
+	if ((r = sshkey_check_cert_sigtype(key,
+	    options.ca_sign_algorithms)) != 0) {
+		logit("%s: certificate signature algorithm %s: %s", __func__,
+		    (key->cert == NULL || key->cert->signature_type == NULL) ?
+		    "(null)" : key->cert->signature_type, ssh_err(r));
+		return 0;
+	}
+
 	return 1;
 }
 
@@ -1546,21 +1544,6 @@ warn_changed_key(struct sshkey *host_key)
 int
 ssh_local_cmd(const char *args)
 {
-#ifdef WINDOWS
-	if (!options.permit_local_command ||
-		args == NULL || !*args)
-		return (1);
-
-	int retVal = -1;
-	wchar_t *args_w = utf8_to_utf16(args);
-
-	if (args_w) {
-		retVal = _wsystem(args_w);
-		free(args_w);
-	}
-
-	return retVal;
-#else /* !WINDOWS */
 	char *shell;
 	pid_t pid;
 	int status;
@@ -1569,6 +1552,10 @@ ssh_local_cmd(const char *args)
 	if (!options.permit_local_command ||
 	    args == NULL || !*args)
 		return (1);
+
+#ifdef WINDOWS
+	return system(args);
+#endif
 
 	if ((shell = getenv("SHELL")) == NULL || *shell == '\0')
 		shell = _PATH_BSHELL;
@@ -1593,7 +1580,6 @@ ssh_local_cmd(const char *args)
 		return (1);
 
 	return (WEXITSTATUS(status));
-#endif  /* !WINDOWS */
 }
 
 void

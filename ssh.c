@@ -1,4 +1,4 @@
-/* $OpenBSD: ssh.c,v 1.490 2018/07/27 05:34:42 dtucker Exp $ */
+/* $OpenBSD: ssh.c,v 1.494 2018/10/03 06:38:35 djm Exp $ */
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
@@ -739,8 +739,15 @@ main(int ac, char **av)
 				cp = sshkey_alg_list(1, 0, 0, '\n');
 			else if (strcmp(optarg, "key-plain") == 0)
 				cp = sshkey_alg_list(0, 1, 0, '\n');
-			else if (strcmp(optarg, "protocol-version") == 0) {
+			else if (strcmp(optarg, "sig") == 0)
+				cp = sshkey_alg_list(0, 1, 1, '\n');
+			else if (strcmp(optarg, "protocol-version") == 0)
 				cp = xstrdup("2");
+			else if (strcmp(optarg, "help") == 0) {
+				cp = xstrdup(
+				    "cipher\ncipher-auth\nkex\nkey\n"
+				    "key-cert\nkey-plain\nmac\n"
+				    "protocol-version\nsig");
 			}
 			if (cp == NULL)
 				fatal("Unsupported query \"%s\"", optarg);
@@ -1130,10 +1137,9 @@ main(int ac, char **av)
 	if (addrs == NULL && options.num_permitted_cnames != 0 && (direct ||
 	    options.canonicalize_hostname == SSH_CANONICALISE_ALWAYS)) {
 		if ((addrs = resolve_host(host, options.port,
-		    option_clear_or_none(options.proxy_command),
-		    cname, sizeof(cname))) == NULL) {
+		    direct, cname, sizeof(cname))) == NULL) {
 			/* Don't fatal proxied host names not in the DNS */
-			if (option_clear_or_none(options.proxy_command))
+			if (direct)
 				cleanup_exit(255); /* logged in resolve_host */
 		} else
 			check_follow_cname(direct, &host, cname);
@@ -1449,9 +1455,27 @@ main(int ac, char **av)
 			    "r", options.user,
 			    "u", pw->pw_name,
 			    (char *)NULL);
-			setenv(SSH_AUTHSOCKET_ENV_NAME, cp, 1);
-			free(cp);
 			free(p);
+			/*
+			 * If identity_agent represents an environment variable
+			 * then recheck that it is valid (since processing with
+			 * percent_expand() may have changed it) and substitute
+			 * its value.
+			 */
+			if (cp[0] == '$') {
+				if (!valid_env_name(cp + 1)) {
+					fatal("Invalid IdentityAgent "
+					    "environment variable name %s", cp);
+				}
+				if ((p = getenv(cp + 1)) == NULL)
+					unsetenv(SSH_AUTHSOCKET_ENV_NAME);
+				else
+					setenv(SSH_AUTHSOCKET_ENV_NAME, p, 1);
+			} else {
+				/* identity_agent specifies a path directly */
+				setenv(SSH_AUTHSOCKET_ENV_NAME, cp, 1);
+			}
+			free(cp);
 		}
 	}
 
@@ -1515,14 +1539,6 @@ main(int ac, char **av)
 static void
 control_persist_detach(void)
 {
-#ifdef WINDOWS
-	/* 
-	 * This needs some level of support for domain sockets in Windows 
-	 * Domain sockets (w/out ancillary data support) can easily be 
-	 * implemented using named pipes.
-	 */
-        fatal("ControlMaster is not supported in Windows yet");
-#else /* !WINDOWS */
 	pid_t pid;
 	int devnull, keep_stderr;
 
@@ -1565,7 +1581,6 @@ control_persist_detach(void)
 	}
 	daemon(1, 1);
 	setproctitle("%s [mux]", options.control_path);
-#endif /* !WINDOWS */
 }
 
 /* Do fork() after authentication. Used by "ssh -f" */
@@ -1935,7 +1950,6 @@ ssh_session2(struct ssh *ssh, struct passwd *pw)
 	 * NB. this can only happen after LocalCommand has completed,
 	 * as it may want to write to stdout.
 	 */
-#ifndef WINDOWS /* TODO - implement dup2 for Windows */
 	if (!need_controlpersist_detach) {
 		if ((devnull = open(_PATH_DEVNULL, O_WRONLY)) == -1)
 			error("%s: open %s: %s", __func__,
@@ -1945,7 +1959,6 @@ ssh_session2(struct ssh *ssh, struct passwd *pw)
 		if (devnull > STDERR_FILENO)
 			close(devnull);
 	}
-#endif
 
 	/*
 	 * If requested and we are not interested in replies to remote
