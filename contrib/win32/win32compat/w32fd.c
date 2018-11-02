@@ -1034,7 +1034,7 @@ int fork()
 	verbose("fork is not supported"); 
 	return -1;
 }
-char * build_commandline_string(const char* cmd, char *const argv[], BOOLEAN prepend_module_path);
+char * build_commandline_string(const char* cmd, char *const argv[], BOOLEAN prepend_module_path, int * second_quote);
 
 /*
 * spawn a child process
@@ -1051,9 +1051,8 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 	BOOL b;
 	char *cmdline;
 	wchar_t * cmdline_utf16 = NULL;
-	int ret = -1;
-
-	cmdline = build_commandline_string(cmd, argv, prepend_module_path);
+	int ret = -1, second_quote_failoever = 0;
+	cmdline = build_commandline_string(cmd, argv, prepend_module_path, &second_quote_failoever);
 	if ((cmdline_utf16 = utf8_to_utf16(cmdline)) == NULL) {
 		errno = ENOMEM;
 		goto cleanup;
@@ -1065,13 +1064,25 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 	si.hStdOutput = out;
 	si.hStdError = err;
 	si.dwFlags = STARTF_USESTDHANDLES;
-	
+
 	debug3("spawning %ls", cmdline_utf16);
 
 	if (as_user)
 		b = CreateProcessAsUserW(as_user, NULL, cmdline_utf16, NULL, NULL, TRUE, flags, NULL, NULL, &si, &pi);
 	else
 		b = CreateProcessW(NULL, cmdline_utf16, NULL, NULL, TRUE, flags, NULL, NULL, &si, &pi);
+
+	/* create process failover: when there is only cmd,
+	* double quotes might be added unnecessary. remove it and try again
+	*/ 
+	if (!b && (second_quote_failoever > 0 )) {
+		*(cmdline_utf16 + wcslen(cmdline_utf16) - 1) = L'\0';
+		debug3("spawning %ls", cmdline_utf16 + 1);
+		if (as_user)
+			b = CreateProcessAsUserW(as_user, NULL, cmdline_utf16 + 1, NULL, NULL, TRUE, flags, NULL, NULL, &si, &pi);
+		else
+			b = CreateProcessW(NULL, cmdline_utf16 + 1 , NULL, NULL, TRUE, flags, NULL, NULL, &si, &pi);
+	}
 
 	if (b) {
 		if (register_child(pi.hProcess, pi.dwProcessId) == -1) {
@@ -1080,14 +1091,13 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 			goto cleanup;
 		}
 		CloseHandle(pi.hThread);
+		ret = pi.dwProcessId;
 	}
 	else {
 		errno = GetLastError();
 		error("%s failed error:%d", (as_user ? "CreateProcessAsUserW" : "CreateProcessW"), GetLastError());
-		goto cleanup;
 	}
 
-	ret = pi.dwProcessId;
 cleanup:
 	if (cmdline)
 		free(cmdline);

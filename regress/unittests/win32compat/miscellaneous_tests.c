@@ -351,29 +351,35 @@ test_build_exec_command()
 }
 
 char *
-build_commandline_string(const char* cmd, char *const argv[], BOOLEAN prepend_module_path);
+build_commandline_string(const char* cmd, char *const argv[], BOOLEAN prepend_module_path, int * second_quote);
 void
 test_build_commandline_string()
 {
 	char *out, in[PATH_MAX], buf[PATH_MAX];
+	int second_quote = 0;
 
 	TEST_START("cmd is null");
-	out = build_commandline_string(NULL, NULL, TRUE);
+	out = build_commandline_string(NULL, NULL, TRUE, &second_quote);
 	ASSERT_PTR_EQ(out, NULL);
+	ASSERT_INT_EQ(second_quote, 0);
 	TEST_DONE();
 
 	TEST_START("arg is null");
-	out = build_commandline_string("\"c:\\windows\\system32\\cmd.exe\" /c arg", NULL, TRUE);
+	out = build_commandline_string("\"c:\\windows\\system32\\cmd.exe\" /c arg", NULL, FALSE, &second_quote);
 	ASSERT_STRING_EQ(out, "\"c:\\windows\\system32\\cmd.exe\" /c arg");
+	ASSERT_INT_EQ(second_quote, 0);
 	free(out);
-	out = build_commandline_string("cmd.exe /c ping.exe", NULL, FALSE);
-	ASSERT_STRING_EQ(out, "cmd.exe /c ping.exe");
+	out = build_commandline_string("cmd.exe /c ping.exe", NULL, FALSE, &second_quote);
+	ASSERT_STRING_EQ(out, "\"cmd.exe /c ping.exe\"");
+	ASSERT_INT_EQ(second_quote, 1);
 	sprintf_s(in, PATH_MAX, "\"%s\\%s\"", __progdir, "ssh-shellhost.exe\" -c \"arg1 arg2\"");
-	out = build_commandline_string(in, NULL, TRUE);
+	out = build_commandline_string(in, NULL, TRUE, &second_quote);
 	ASSERT_STRING_EQ(out, in);
+	ASSERT_INT_EQ(second_quote, 0);
 	free(out);
-	out = build_commandline_string("\"cmd.exe\" /c \"arg1 arg2\"", NULL, FALSE);
+	out = build_commandline_string("\"cmd.exe\" /c \"arg1 arg2\"", NULL, FALSE, &second_quote);
 	ASSERT_STRING_EQ(out, "\"cmd.exe\" /c \"arg1 arg2\"");
+	ASSERT_INT_EQ(second_quote, 0);
 	free(out);
 	TEST_DONE();
 
@@ -382,32 +388,37 @@ test_build_commandline_string()
 	argv[1] = "-c";
 	argv[2] = "arg1 arg2";
 	TEST_START("arg is not null");
-	out = build_commandline_string(argv[0], argv + 1, TRUE);
+	out = build_commandline_string(argv[0], argv + 1, TRUE, &second_quote);
 	sprintf_s(buf, PATH_MAX, "%s %s %s", argv[0], argv[1], "\"arg1 arg2\"");
 	ASSERT_STRING_EQ(out, buf);
+	ASSERT_INT_EQ(second_quote, 0);
 	free(out);
-	argv[0] = "\"C:\\myfolder\\bash.exe\"";
+	argv[0] = "C:\\my folder\\bash.exe";
 	argv[2] = "\"arg1\\arg2\"";
-	out = build_commandline_string(argv[0], argv + 1, TRUE);
-	sprintf_s(buf, PATH_MAX, "%s %s %s", argv[0], argv[1], "\\\"arg1\\arg2\\\"");
+	out = build_commandline_string(argv[0], argv + 1, TRUE, &second_quote);
+	sprintf_s(buf, PATH_MAX, "\"%s\" %s %s", argv[0], argv[1], "\\\"arg1\\arg2\\\"");
 	ASSERT_STRING_EQ(out, buf);
+	ASSERT_INT_EQ(second_quote, 0);
 	free(out);
 	argv[2] = "\"arg1 arg2\\\"";
-	out = build_commandline_string(argv[0], argv + 1, TRUE);
-	sprintf_s(buf, PATH_MAX, "%s %s %s", argv[0], argv[1], "\"\\\"arg1 arg2\\\\\\\"\"");
+	out = build_commandline_string(argv[0], argv + 1, TRUE, &second_quote);
+	sprintf_s(buf, PATH_MAX, "\"%s\" %s %s", argv[0], argv[1], "\"\\\"arg1 arg2\\\\\\\"\"");
 	ASSERT_STRING_EQ(out, buf);
+	ASSERT_INT_EQ(second_quote, 0);
 	free(out);
 	argv[0] = "\"c:\\cygwin64\\bin\\ba.exe\"";
 	argv[2] = "arg1\\arg2";
-	out = build_commandline_string(argv[0], argv + 1, TRUE);
+	out = build_commandline_string(argv[0], argv + 1, TRUE, &second_quote);
 	sprintf_s(buf, PATH_MAX, "%s %s %s", argv[0], argv[1], "arg1\\arg2");
 	ASSERT_STRING_EQ(out, buf);
+	ASSERT_INT_EQ(second_quote, 0);
 	free(out);
 	argv[0] = "\"c:\\cygwin64\\bin\\ba.exe\"";
 	argv[2] = "'arg1 \\arg2\\\"'";
-	out = build_commandline_string(argv[0], argv + 1, TRUE);
+	out = build_commandline_string(argv[0], argv + 1, TRUE, &second_quote);
 	sprintf_s(buf, PATH_MAX, "%s %s %s", argv[0], argv[1], "'arg1 \\arg2\\\\\\\"'");
 	ASSERT_STRING_EQ(out, buf);
+	ASSERT_INT_EQ(second_quote, 0);
 	free(out);
 	TEST_DONE();
 }
