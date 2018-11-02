@@ -355,7 +355,7 @@ function Start-OpenSSHPackage
     $payload += "sftp-server.exe", "scp.exe", "ssh-shellhost.exe", "ssh-keygen.exe", "ssh-keyscan.exe" 
     $payload += "sshd_config_default", "install-sshd.ps1", "uninstall-sshd.ps1"
     $payload += "FixHostFilePermissions.ps1", "FixUserFilePermissions.ps1", "OpenSSHUtils.psm1", "OpenSSHUtils.psd1"
-    $payload += "openssh-events.man"
+    $payload += "openssh-events.man", "moduli_default"
 
     $packageName = "OpenSSH-Win64"
     if ($NativeHostArch -ieq 'x86') {
@@ -690,13 +690,9 @@ function Get-BuildLogFile
                 
         [ValidateSet('Debug', 'Release')]
         [string]$Configuration = "Release"
-    )
-    if ($root.FullName -ieq $PSScriptRoot)
-    {
-        return Join-Path -Path $PSScriptRoot -ChildPath "OpenSSH$($Configuration)$($NativeHostArch).log"
-    } else {
-        return Join-Path -Path $root -ChildPath "contrib\win32\openssh\OpenSSH$($Configuration)$($NativeHostArch).log"
-    }
+        
+    )    
+    return Join-Path -Path $root -ChildPath "contrib\win32\openssh\OpenSSH$($Configuration)$($NativeHostArch).log"
 }
 
 function Get-SolutionFile
@@ -705,14 +701,9 @@ function Get-SolutionFile
     (
         [Parameter(Mandatory=$true)]
         [ValidateNotNull()]
-        [System.IO.DirectoryInfo] $root
+        [System.IO.DirectoryInfo] $root        
     )    
-    if ($root.FullName -ieq $PSScriptRoot)
-    {
-        return Join-Path -Path $PSScriptRoot -ChildPath "Win32-OpenSSH.sln"
-    } else {
-        return Join-Path -Path $root -ChildPath "contrib\win32\openssh\Win32-OpenSSH.sln"
-    }
+    return Join-Path -Path $root -ChildPath "contrib\win32\openssh\Win32-OpenSSH.sln"    
 }
 
 

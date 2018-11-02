@@ -24,6 +24,7 @@
     <file src="__INPATHROOT__\OpenSSHUtils.psm1" signType="Authenticode" dest="__OUTPATHROOT__\OpenSSHUtils.psm1" />
    <!-- not actually a code file, don't sign for now
     <file src="__INPATHROOT__\sshd_config_default" signType="Authenticode" dest="__OUTPATHROOT__\sshd_config_default" />
+    <file src="__INPATHROOT__\moduli_default" signType="Authenticode" dest="__OUTPATHROOT__\moduli_default" />
     -->
   </job>
 </SignConfigXML>
