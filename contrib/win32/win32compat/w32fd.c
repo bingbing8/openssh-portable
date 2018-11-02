@@ -1034,7 +1034,7 @@ int fork()
 	verbose("fork is not supported"); 
 	return -1;
 }
-char * build_commandline_string(const char* cmd, char *const argv[], BOOLEAN prepend_module_path, int * second_quote);
+char * build_commandline_string(const char* cmd, char *const argv[], BOOLEAN prepend_module_path);
 
 /*
 * spawn a child process
@@ -1051,8 +1051,8 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 	BOOL b;
 	char *cmdline;
 	wchar_t * cmdline_utf16 = NULL;
-	int ret = -1, second_quote_failoever = 0;
-	cmdline = build_commandline_string(cmd, argv, prepend_module_path, &second_quote_failoever);
+	int ret = -1;
+	cmdline = build_commandline_string(cmd, argv, prepend_module_path);
 	if ((cmdline_utf16 = utf8_to_utf16(cmdline)) == NULL) {
 		errno = ENOMEM;
 		goto cleanup;
@@ -1064,25 +1064,19 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 	si.hStdOutput = out;
 	si.hStdError = err;
 	si.dwFlags = STARTF_USESTDHANDLES;
-
-	debug3("spawning %ls", cmdline_utf16);
-
-	if (as_user)
-		b = CreateProcessAsUserW(as_user, NULL, cmdline_utf16, NULL, NULL, TRUE, flags, NULL, NULL, &si, &pi);
-	else
-		b = CreateProcessW(NULL, cmdline_utf16, NULL, NULL, TRUE, flags, NULL, NULL, &si, &pi);
-
-	/* create process failover: when there is only cmd,
-	* double quotes might be added unnecessary. remove it and try again
-	*/ 
-	if (!b && (second_quote_failoever > 0 )) {
-		*(cmdline_utf16 + wcslen(cmdline_utf16) - 1) = L'\0';
-		debug3("spawning %ls", cmdline_utf16 + 1);
+	
+	int num = 0;
+	char * t;
+	do {
+		t = cmdline_utf16 + num++;
+		debug3("spawning %ls", t);
 		if (as_user)
-			b = CreateProcessAsUserW(as_user, NULL, cmdline_utf16 + 1, NULL, NULL, TRUE, flags, NULL, NULL, &si, &pi);
+			b = CreateProcessAsUserW(as_user, NULL, t, NULL, NULL, TRUE, flags, NULL, NULL, &si, &pi);
 		else
-			b = CreateProcessW(NULL, cmdline_utf16 + 1 , NULL, NULL, TRUE, flags, NULL, NULL, &si, &pi);
-	}
+			b = CreateProcessW(NULL, t, NULL, NULL, TRUE, flags, NULL, NULL, &si, &pi);
+		*(cmdline_utf16 + wcslen(cmdline_utf16) - 1) = L'\0';
+		/*failover only when double quotes is potentially added necessary*/
+	} while (!b && num <= 1 && cmd[0] != '\"' && ((argv == NULL) || (*argv == NULL)));
 
 	if (b) {
 		if (register_child(pi.hProcess, pi.dwProcessId) == -1) {

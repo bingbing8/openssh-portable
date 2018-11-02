@@ -1646,7 +1646,7 @@ build_exec_command(const char * command)
  * this decoration is done only when additional arguments are passed in argv
 */
 char *
-build_commandline_string(const char* cmd, char *const argv[], BOOLEAN prepend_module_path, int * second_quote_failoever)
+build_commandline_string(const char* cmd, char *const argv[], BOOLEAN prepend_module_path)
 {
 	char *cmdline, *t, *tmp = NULL, *path = NULL;
 	char * const *t1;
@@ -1658,17 +1658,16 @@ build_commandline_string(const char* cmd, char *const argv[], BOOLEAN prepend_mo
 		return NULL;
 	}
 
-	*second_quote_failoever = 0;
 	if (!(path = _strdup(cmd))) {
 		error("failed to duplicate %s", cmd);
 		return NULL;
 	}
 
-	path_len = (DWORD)strlen(path) + 1;
+	path_len = (DWORD)strlen(path);
 
 	if (is_bash_test_env()) {
-		memset(path, 0, path_len);
-		bash_to_win_path(cmd, path, path_len);
+		memset(path, 0, path_len + 1);
+		bash_to_win_path(cmd, path, path_len + 1);
 	}
 
 	if (!is_absolute_path(path) && prepend_module_path)
@@ -1729,14 +1728,10 @@ build_commandline_string(const char* cmd, char *const argv[], BOOLEAN prepend_mo
 		t += strlen(__progdir);
 		*t++ = '\\';
 	}
-	memcpy(t, path, strlen(path));
-	t += strlen(path);
-	if (path[0] != '\"') {
+	memcpy(t, path, path_len);
+	t += path_len;
+	if (path[0] != '\"')
 		*t++ = '\"';
-		/*record the quote position only when the quote is potentially unnecessary*/
-		if ((argv == NULL) || (*argv == NULL))
-			*second_quote_failoever = 1;
-	}
 	*t = '\0';
 	t = cmdline + strlen(cmdline);
 
