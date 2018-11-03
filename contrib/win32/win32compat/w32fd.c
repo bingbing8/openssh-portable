@@ -1052,7 +1052,10 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 	char *cmdline;
 	wchar_t * cmdline_utf16 = NULL;
 	int ret = -1;
-	cmdline = build_commandline_string(cmd, argv, prepend_module_path);
+	if ((cmdline = build_commandline_string(cmd, argv, prepend_module_path)) == NULL) {
+		errno = ENOMEM;
+		goto cleanup;
+	}
 	if ((cmdline_utf16 = utf8_to_utf16(cmdline)) == NULL) {
 		errno = ENOMEM;
 		goto cleanup;
@@ -1065,18 +1068,19 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 	si.hStdError = err;
 	si.dwFlags = STARTF_USESTDHANDLES;
 	
+	wchar_t * t = cmdline_utf16;
 	int num = 0;
-	char * t;
 	do {
-		t = cmdline_utf16 + num++;
 		debug3("spawning %ls", t);
 		if (as_user)
 			b = CreateProcessAsUserW(as_user, NULL, t, NULL, NULL, TRUE, flags, NULL, NULL, &si, &pi);
 		else
 			b = CreateProcessW(NULL, t, NULL, NULL, TRUE, flags, NULL, NULL, &si, &pi);
+		if(b || GetLastError() != ERROR_FILE_NOT_FOUND || (argv != NULL && *argv != NULL) || cmd[0] == '\"')
+			break;
+		t++;
 		*(cmdline_utf16 + wcslen(cmdline_utf16) - 1) = L'\0';
-		/*failover only when double quotes is potentially added necessary*/
-	} while (!b && num <= 1 && cmd[0] != '\"' && ((argv == NULL) || (*argv == NULL)));
+	} while (++num <= 1);
 
 	if (b) {
 		if (register_child(pi.hProcess, pi.dwProcessId) == -1) {

@@ -317,7 +317,6 @@ test_chroot()
 	//_wsystem(L"RD /S /Q chroot-testdir >NUL 2>&1");
 }
 
-char * build_exec_command(const char * command);
 void
 test_build_exec_command()
 {
@@ -350,8 +349,6 @@ test_build_exec_command()
 	TEST_DONE();
 }
 
-char *
-build_commandline_string(const char* cmd, char *const argv[], BOOLEAN prepend_module_path);
 void
 test_build_commandline_string()
 {
@@ -371,6 +368,9 @@ test_build_commandline_string()
 	sprintf_s(in, PATH_MAX, "\"%s\\%s\"", __progdir, "ssh-shellhost.exe\" -c \"arg1 arg2\"");
 	out = build_commandline_string(in, NULL, TRUE);
 	ASSERT_STRING_EQ(out, in);
+	out = build_commandline_string("\"ssh-shellhost.exe\" -c \"arg1 arg2\"", NULL, TRUE);
+	sprintf_s(buf, PATH_MAX, "\"%s\\%s", __progdir, "ssh-shellhost.exe\" -c \"arg1 arg2\"");
+	ASSERT_STRING_EQ(out, buf);
 	free(out);
 	out = build_commandline_string("\"cmd.exe\" /c \"arg1 arg2\"", NULL, FALSE);
 	ASSERT_STRING_EQ(out, "\"cmd.exe\" /c \"arg1 arg2\"");

@@ -1648,10 +1648,10 @@ build_exec_command(const char * command)
 char *
 build_commandline_string(const char* cmd, char *const argv[], BOOLEAN prepend_module_path)
 {
-	char *cmdline, *t, *tmp = NULL, *path = NULL;
+	char *cmdline, *t, *tmp = NULL, *path = NULL, *ret = NULL;
 	char * const *t1;
 	DWORD cmdline_len = 0, path_len = 0;
-	int add_module_path = 0, ret = -1;
+	int add_module_path = 0;
 
 	if (!cmd) {
 		error("%s invalid argument cmd:%s", __func__, cmd);
@@ -1717,21 +1717,25 @@ build_commandline_string(const char* cmd, char *const argv[], BOOLEAN prepend_mo
 		errno = ENOMEM;
 		goto cleanup;
 	}
-
 	t = cmdline;
-	if (path[0] != '\"')
-		*t++ = '\"';
-	
+	*t++ = '\"';
 	if (add_module_path) {
 		/* add current module path to start if needed */
 		memcpy(t, __progdir, strlen(__progdir));
 		t += strlen(__progdir);
 		*t++ = '\\';
 	}
-	memcpy(t, path, path_len);
-	t += path_len;
-	if (path[0] != '\"')
+	if (path[0] != '\"') {
+		memcpy(t, path, path_len);
+		t += path_len;
 		*t++ = '\"';
+	}
+	else {
+		/*path already contains "*/
+		memcpy(t, path + 1, path_len - 1);
+		t += path_len - 1;
+	}
+
 	*t = '\0';
 	t = cmdline + strlen(cmdline);
 
@@ -1786,10 +1790,14 @@ build_commandline_string(const char* cmd, char *const argv[], BOOLEAN prepend_mo
 		}
 	}
 	*t = '\0';
+	ret = cmdline;
+	cmdline = NULL;
 cleanup:
 	if (path)
 		free(path);
-	return cmdline;
+	if (cmdline)
+		free(cmdline);
+	return ret;
 }
 BOOL
 is_bash_test_env()

@@ -57,8 +57,6 @@ extern ServerOptions options;
 extern struct sshauthopt *auth_opts;
 char **
 do_setup_env_proxy(struct ssh *, Session *, const char *);
-int exec_command_with_pty(int * pid, char* cmd, int in, int out, int err, unsigned int col, unsigned int row, int ttyfd);
-char * build_exec_command(const char * command);
 
 /*
 * do_exec* on Windows
