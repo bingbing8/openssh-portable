@@ -1069,7 +1069,6 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 	si.dwFlags = STARTF_USESTDHANDLES;
 	
 	wchar_t * t = cmdline_utf16;
-	int num = 0;
 	do {
 		debug3("spawning %ls", t);
 		if (as_user)
@@ -1080,7 +1079,7 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 			break;
 		t++;
 		*(cmdline_utf16 + wcslen(cmdline_utf16) - 1) = L'\0';
-	} while (++num <= 1);
+	} while (t == (cmdline_utf16 + 1));
 
 	if (b) {
 		if (register_child(pi.hProcess, pi.dwProcessId) == -1) {

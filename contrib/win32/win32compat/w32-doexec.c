@@ -65,15 +65,15 @@ do_setup_env_proxy(struct ssh *, Session *, const char *);
 * - Interactive shell/commands are executed using ssh-shellhost.exe
 * - ssh-shellhost.exe implements server-side PTY for Windows
 */
-#define UTF8_TO_UTF16_WITH_CLEANUP(o, i) do {				\
-	if (o != NULL) free(o);					\
+#define UTF8_TO_UTF16_WITH_CLEANUP(o, i) do {	\
+	if (o != NULL) free(o);						\
 	if ((o = utf8_to_utf16(i)) == NULL)			\
-		goto cleanup;		\
+		goto cleanup;							\
 } while (0)
 
 #define GOTO_CLEANUP_ON_ERR(exp) do {	\
-	if ((exp) != 0)			\
-		goto cleanup;		\
+	if ((exp) != 0)						\
+		goto cleanup;					\
 } while(0)
 
 /* TODO  - built env var set and pass it along with CreateProcess */
@@ -98,9 +98,8 @@ setup_session_user_vars(wchar_t* profile_path)
 		SetEnvironmentVariableW(L"HOMEDRIVE", profile_path);
 		profile_path[2] = wc;
 	}
-	else {
+	else
 		SetEnvironmentVariableW(L"HOMEPATH", profile_path);
-	}
 
 	swprintf_s(path, _countof(path), L"%s\\AppData\\Local", profile_path);
 	SetEnvironmentVariableW(L"LOCALAPPDATA", path);
@@ -214,33 +213,26 @@ setup_session_env(struct ssh *ssh, Session* s)
 			*t = '\0';
 			UTF8_TO_UTF16_WITH_CLEANUP(env_name_w, env_name);
 			UTF8_TO_UTF16_WITH_CLEANUP(env_value_w, env_value);
-
 			SetEnvironmentVariableW(env_name_w, env_value_w);
 		}
 	}
-
 	ret = 0;
+
 cleanup:
 	if (pw_dir_w)
 		free(pw_dir_w);
-
 	if (tmp)
 		free(tmp);
-
 	if (env_name_w)
 		free(env_name_w);
-
 	if (env_value_w)
 		free(env_value_w);
-
 	if (env) {
 		i = 0;
 		while (t = env[i++])
 			free(t);
-
 		free(env);
 	}
-
 	return ret;
 }
 
