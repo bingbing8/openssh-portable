@@ -15,11 +15,12 @@ after_build:
   - ps: |
       Import-Module $env:APPVEYOR_BUILD_FOLDER\contrib\win32\openssh\AppveyorHelper.psm1
       Install-OpenSSH
+      Install-Pester
 
 test_script:
   - ps: |
-      Import-Module $env:APPVEYOR_BUILD_FOLDER\contrib\win32\openssh\AppveyorHelper.psm1
-      Invoke-OpenSSHTests
+      Import-Module pester -force -global
+      $env:APPVEYOR_BUILD_FOLDER\regress\pesterTests\SSH.Tests.ps1
 
 after_test:
   - ps: |
