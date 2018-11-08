@@ -22,10 +22,6 @@ test_script:
       Import-Module pester -force
       Invoke-Pester "$($env:APPVEYOR_BUILD_FOLDER)\regress\pesterTests\SSH.Tests.ps1"
 
-after_test:
-  - ps: |
-      Import-Module $env:APPVEYOR_BUILD_FOLDER\contrib\win32\openssh\AppveyorHelper.psm1
-      Publish-OpenSSHTestResults
       
 on_finish:
   - ps: |      
