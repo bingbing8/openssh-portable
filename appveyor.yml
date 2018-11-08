@@ -19,8 +19,8 @@ after_build:
 
 test_script:
   - ps: |
-      Import-Module pester -force -global
-      $env:APPVEYOR_BUILD_FOLDER\regress\pesterTests\SSH.Tests.ps1
+      Import-Module pester -force
+      Invoke-Pester "$($env:APPVEYOR_BUILD_FOLDER)\regress\pesterTests\SSH.Tests.ps1"
 
 after_test:
   - ps: |
