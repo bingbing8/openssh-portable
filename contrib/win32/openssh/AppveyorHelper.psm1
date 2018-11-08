@@ -99,7 +99,7 @@ function Invoke-AppVeyorBuild
 {
       Set-BuildVariable TestPassed True
       Start-OpenSSHBuild -Configuration Release -NativeHostArch x64
-      Start-OpenSSHBuild -Configuration Release -NativeHostArch x86
+      #Start-OpenSSHBuild -Configuration Release -NativeHostArch x86
       Write-BuildMessage -Message "OpenSSH binaries build success!" -Category Information
 }
 
@@ -139,6 +139,7 @@ function Add-BuildLog
 
 function Install-Pester
 {
+	Write-BuildMessage -Message "install pester"
 	# Install chocolatey
     if(-not (Get-Command "choco" -ErrorAction SilentlyContinue))
     {
