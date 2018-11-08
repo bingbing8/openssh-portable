@@ -142,14 +142,12 @@ function Install-Pester
 	# Install chocolatey
     if(-not (Get-Command "choco" -ErrorAction SilentlyContinue))
     {
-        Write-Log -Message "Chocolatey not present. Installing chocolatey."
         Invoke-Expression ((new-object net.webclient).DownloadString('https://chocolatey.org/install.ps1'))
     }
 
     $isModuleAvailable = Get-Module 'Pester' -ListAvailable
     if (-not ($isModuleAvailable))
-    {      
-        Write-Log -Message "Installing Pester..." 
+    {
         choco install Pester --version 3.4.6 -y --force --limitoutput
     }
 }
