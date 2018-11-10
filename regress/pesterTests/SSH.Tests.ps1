@@ -214,9 +214,9 @@ Describe "E2E scenarios for ssh client" -Tags "CI" {
             Remove-ItemProperty -Path $dfltShellRegPath -Name $dfltShellRegKeyName -ErrorAction SilentlyContinue
             Remove-ItemProperty -Path $dfltShellRegPath -Name $dfltShellCmdOptionRegKeyName -ErrorAction SilentlyContinue
         }
-        It "$tC.$tI - default shell as cmd" -skip:$skip {            
+        It "$tC.$tI - default shell as cmd" -skip:$skip {
             $o = ssh -F $ssh_config_file test_target where cmd
-            $o | Should -BeLike "cmd"            
+            $o | Should -BeLike "*cmd*"
         }
         It "$tC.$tI - cmd as default shell and double quotes in cmdline" {
             # actual command line ssh target echo "\"hello\""
@@ -264,7 +264,7 @@ Describe "E2E scenarios for ssh client" -Tags "CI" {
         It "$tC.$tI - cipher options (-c)" {
             #bad cipher
             iex "cmd /c `"ssh -c bad_cipher -F $ssh_config_file test_target echo 1234 2>$stderrFile`""
-            $stderrFile | Should Contain "Unknown cipher type"
+            $stderrFile | Should -FileContentMatch "Unknown cipher type"
             #good cipher, ensure cipher is used from debug logs
             $o = ssh -c aes256-ctr  -v -E $logFile -F $ssh_config_file test_target echo 1234
             $o | Should Be "1234"
@@ -304,7 +304,7 @@ Describe "E2E scenarios for ssh client" -Tags "CI" {
             #-4
             $o = ssh -6 -v -E $logFile -F $ssh_config_file test_target echo 1234
             $o | Should Be "1234"
-            $logFile | Should -FileContentMatch "[::1]"            
+            $logFile | Should -FileContentMatch "[::1]"
         }
 
         It "$tC.$tI - auto populate known hosts" {
