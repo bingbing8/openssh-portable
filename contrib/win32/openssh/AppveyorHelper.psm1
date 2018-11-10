@@ -8,6 +8,7 @@ $repoRoot = Get-RepositoryRoot
 $script:messageFile = join-path $repoRoot.FullName "BuildMessage.log"
 $Script:TestResultsDir = "$env:temp\OpenSSHTestResults\"
 $Script:E2EResult = "$Script:TestResultsDir\E2Eresult.xml"
+$Script:UnitTestResult = "$Script:TestResultsDir\UnittestTestResult.txt"
 
 # Write the build message
 Function Write-BuildMessage
@@ -17,7 +18,7 @@ Function Write-BuildMessage
         [ValidateNotNullOrEmpty()]
         [string] $Message,
         $Category,
-        [string]  $Details)
+        [string]$Details)
 
     if($env:AppVeyor)
     {
@@ -301,24 +302,32 @@ function Publish-Artifact
 #>
 function Invoke-OpenSSHTests
 {
+    if(-not (Test-Path $Script:TestResultsDir -PathType Container)) {
+        New-Item $Script:TestResultsDir -ItemType Directory -Force -ErrorAction SilentlyContinue| Out-Null
+    }
+    Invoke-OpenSSHUnitTests
+    Invoke-OpenSSHE2ETests
+}
+
+<#
+      .Synopsis
+      Runs E2E pester tests for this repo
+#>
+function Invoke-OpenSSHE2ETests
+{
 	Import-Module pester -force -global
     Write-BuildMessage -Message "Running OpenSSH tests..." -Category Information
     #only ssh tests for now
     $testList = "$env:APPVEYOR_BUILD_FOLDER\regress\pesterTests\SSH.Tests.ps1"
-
-    if(-not (Test-Path $Script:TestResultsDir -PathType Container)) {
-        New-Item $Script:TestResultsDir -ItemType Directory -Force -ErrorAction SilentlyContinue| Out-Null
-    }
+    
     Invoke-Pester $testList -OutputFormat NUnitXml -OutputFile $Script:E2EResult -Tag 'CI' -PassThru
 
     $xml = [xml](Get-Content $Script:E2EResult | out-string)
     if ([int]$xml.'test-results'.failures -gt 0) 
     {
         $errorMessage = "$($xml.'test-results'.failures) setup tests in regress\pesterTests failed. Detail test log is at $($OpenSSHTestInfo["SetupTestResultsFile"])."
-        Write-Warning $errorMessage
         Write-BuildMessage -Message $errorMessage -Category Error
         Set-BuildVariable TestPassed False
-        Write-Warning "Stop running further tests!"
         return
     }
 
@@ -327,6 +336,92 @@ function Invoke-OpenSSHTests
     {
         Write-BuildMessage -Message "Tests Should clean $Error after success." -Category Warning
     }
+}
+
+<#
+    .Synopsis
+    Get-UnitTestDirectory.
+#>
+function Get-UnitTestDirectory
+{
+    [CmdletBinding()]
+    param
+    (
+        [ValidateSet('Debug', 'Release')]
+        [string]$Configuration = "Release"
+    )
+
+    [string] $NativeHostArch = $env:PROCESSOR_ARCHITECTURE
+    if($NativeHostArch -eq 'x86')
+    {
+        $NativeHostArch = "Win32"
+    }
+    else
+    {
+        $NativeHostArch = "x64"
+    }  
+    
+    $unitTestdir = Join-Path $env:APPVEYOR_BUILD_FOLDER -ChildPath "bin\$NativeHostArch\$Configuration"
+    $unitTestDir
+}
+
+function Invoke-OpenSSHUnitTests
+{
+    $unittestdir = Get-UnitTestDirectory
+    Push-Location $unittestdir
+    Write-BuildMessage -Message "Running OpenSSH unit tests..." -Category Information
+    if (Test-Path $Script:UnitTestResult)
+    {
+        Remove-Item -Path $Script:UnitTestResult -Force -ErrorAction SilentlyContinue | Out-Null
+    }
+    $testFolders = Get-ChildItem -filter unittest-*.exe -Recurse |
+                 ForEach-Object{ Split-Path $_.FullName} |
+                 Sort-Object -Unique
+    $testfailed = $false
+    if ($testFolders -ne $null)
+    {
+        $testFolders | % {
+            $unittestFile = "$(Split-Path $_ -Leaf).exe"
+            $unittestFilePath = join-path $_ $unittestFile
+            if(Test-Path $unittestFilePath -pathtype leaf)
+            {                
+                $pinfo = New-Object System.Diagnostics.ProcessStartInfo
+                $pinfo.FileName = "$unittestFilePath"
+                $pinfo.RedirectStandardError = $true
+                $pinfo.RedirectStandardOutput = $true
+                $pinfo.UseShellExecute = $false
+                $pinfo.WorkingDirectory = "$_"
+                $p = New-Object System.Diagnostics.Process
+                $p.StartInfo = $pinfo
+                $p.Start() | Out-Null
+                $stdout = $p.StandardOutput.ReadToEnd()
+                $stderr = $p.StandardError.ReadToEnd()
+                $p.WaitForExit()
+                $errorCode = $p.ExitCode
+                Write-Host "Running unit test: $unittestFile ..."
+                if(-not [String]::IsNullOrWhiteSpace($stdout))
+                {
+                    Add-Content $Script:UnitTestResult $stdout -Force -ErrorAction Ignore
+                }
+                if(-not [String]::IsNullOrWhiteSpace($stderr))
+                {
+                    Add-Content $Script:UnitTestResult $stderr -Force -ErrorAction Ignore
+                }
+                if ($errorCode -ne 0)
+                {
+                    $testfailed = $true
+                    $errorMessage = "$unittestFile failed.`nExitCode: $errorCode. Detail test log is at $Script:UnitTestResult."
+                    Write-BuildMessage -Message $errorMessage  -Category Warning                       
+                }
+                else
+                {
+                    Write-Host "$unittestFile passed!"
+                }
+            }
+        }
+    }
+    Pop-Location
+    $testfailed
 }
 
 <#
@@ -344,6 +439,14 @@ function Publish-OpenSSHTestResults
             (New-Object 'System.Net.WebClient').UploadFile("https://ci.appveyor.com/api/testresults/nunit/$($env:APPVEYOR_JOB_ID)", $E2EresultFile)
              Write-BuildMessage -Message "E2E test results uploaded!" -Category Information
         }
+
+        $UnitTestResultFile = Resolve-Path $Script:UnitTestResult -ErrorAction Ignore
+        if( (Test-Path $Script:UnitTestResult) -and $UnitTestResultFile)
+        {
+            (New-Object 'System.Net.WebClient').UploadFile("https://ci.appveyor.com/api/testresults/nunit/$($env:APPVEYOR_JOB_ID)", $UnitTestResultFile)
+             Write-BuildMessage -Message "E2E test results uploaded!" -Category Information
+        }
+
     }
 
     if($env:TestPassed -ieq 'True')
