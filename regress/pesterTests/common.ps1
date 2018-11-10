@@ -1,7 +1,7 @@
 ﻿param ([string]$Suite = "openssh", [string]$OpenSSHBinPath, [string]$TestDir = "$env:temp\opensshtest")
 
 If ($PSVersiontable.PSVersion.Major -le 2) {$PSScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path}
-$Script:newProcesses = @()
+$Script:newProcess = $null
 $Script:BinaryPath = ""
 $Script:TestDirectory = $TestDir
 $Script:TestSuite = $Suite
@@ -93,7 +93,7 @@ function Start-SSHDDaemon
     param(
     [string]$SSHD_Config_Path = "$Script:TestDirectory\sshd_config")    
     
-    $Script:newProcesses = $null
+    $Script:newProcess = $null
     $existingProcesseIDs = @()
     if(($existingProcesses = Get-Process -name sshd -ErrorAction SilentlyContinue)){
         $existingProcesseIDs = $existingProcesses.id
@@ -105,11 +105,11 @@ function Start-SSHDDaemon
     $num = 0
     do
     {
-        $Script:newProcesses = Get-Process -name sshd -ErrorAction SilentlyContinue | Where-Object {$_.id -notin $existingProcesseIDs}
+        $Script:newProcess = Get-Process -name sshd -ErrorAction SilentlyContinue | Where-Object {$_.id -notin $existingProcesseIDs}
         start-sleep 1
         $num++
         if($num -gt 30) { break }
-    } while ($Script:newProcesses -eq $null)    
+    } while ($Script:newProcess -eq $null)    
 }
 
 function Clear-TestCommons
@@ -122,10 +122,10 @@ function Clear-TestCommons
 
 function Stop-SSHDDaemon
 {
-    if($Script:newProcesses -and $Script:newProcesses.count -gt 0) {
-        $Script:newProcesses | Stop-Process -ErrorAction SilentlyContinue
+    if($Script:newProcess) {
+        $Script:newProcess | Stop-Process -ErrorAction SilentlyContinue
      }
-     $Script:newProcesses = $null
+     $Script:newProcess = $null
  
 }
 
