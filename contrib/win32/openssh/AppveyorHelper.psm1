@@ -302,9 +302,7 @@ function Publish-Artifact
 function Invoke-OpenSSHTests
 {
 	Import-Module pester -force -global
-	Write-Host "repoRoot: $($repoRoot.FullName)"
-	Write-Host "env:APPVEYOR_BUILD_FOLDER: $env:APPVEYOR_BUILD_FOLDER"
-    Write-Log -Message "Running OpenSSH tests..."
+    Write-BuildMessage -Message "Running OpenSSH tests..." -Category Information
 	#only ssh tests for now
     $testList = "$env:APPVEYOR_BUILD_FOLDER\regress\pesterTests\SSH.Tests.ps1"
 
