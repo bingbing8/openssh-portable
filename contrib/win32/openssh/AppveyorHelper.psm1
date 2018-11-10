@@ -302,17 +302,17 @@ function Publish-Artifact
 function Invoke-OpenSSHTests
 {
 	Import-Module pester -force -global
-	Write-Host "repoRoot: $repoRoot.FullName"
+	Write-Host "repoRoot: $($repoRoot.FullName)"
 	Write-Host "env:APPVEYOR_BUILD_FOLDER: $env:APPVEYOR_BUILD_FOLDER"
-    Push-Location $($repoRoot.FullName)\regress\pesterTests
     Write-Log -Message "Running OpenSSH tests..."
-    $testList = "$($repoRoot.FullName)\regress\pesterTests\SSH.Tests.ps1"
+	#only ssh tests for now
+    $testList = "$env:APPVEYOR_BUILD_FOLDER\regress\pesterTests\SSH.Tests.ps1"
 
     if(-not (Test-Path $Script:TestResultsDir -PathType Container)) {
         New-Item $Script:TestResultsDir -ItemType File -Force -ErrorAction SilentlyContinue| Out-Null
     }
     Invoke-Pester $testList -OutputFormat NUnitXml -OutputFile $Script:E2EResult -Tag 'CI' -PassThru
-    Pop-Location
+
     $xml = [xml](Get-Content $Script:E2EResult | out-string)
     if ([int]$xml.'test-results'.failures -gt 0) 
     {
