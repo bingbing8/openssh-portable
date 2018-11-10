@@ -1,11 +1,9 @@
 ﻿$ErrorActionPreference = 'Stop'
 Set-StrictMode -Version 2.0
 If ($PSVersiontable.PSVersion.Major -le 2) {$PSScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path}
-Import-Module $PSScriptRoot\OpenSSHCommonUtils.psm1 -Force
 Import-Module $PSScriptRoot\OpenSSHBuildHelper.psm1 -Force
 
-$repoRoot = Get-RepositoryRoot
-$script:messageFile = join-path $repoRoot.FullName "BuildMessage.log"
+$script:messageFile = join-path $env:temp "BuildMessage.log"
 $Script:TestResultsDir = "$env:temp\OpenSSHTestResults\"
 $Script:E2EResult = "$Script:TestResultsDir\E2Eresult.xml"
 $Script:UnitTestResult = "$Script:TestResultsDir\UnittestTestResult.txt"
@@ -99,8 +97,8 @@ function Invoke-AppVeyorFull
 function Invoke-AppVeyorBuild
 {
       Set-BuildVariable TestPassed True
-      Start-OpenSSHBuild -Configuration Release
-      #Start-OpenSSHBuild -Configuration Release -NativeHostArch x86
+      Start-OpenSSHBuild -Configuration Release -NativeHostArch x64
+      Start-OpenSSHBuild -Configuration Release -NativeHostArch x86
       Write-BuildMessage -Message "OpenSSH binaries build success!" -Category Information
 }
 
@@ -150,7 +148,7 @@ function Install-Pester
     $isModuleAvailable = Get-Module 'Pester' -ListAvailable
     if (-not ($isModuleAvailable))
     {
-        choco install Pester -y --force --limitoutput
+        choco install Pester --version 3.4.6 -y --force --limitoutput
     }
 }
 
@@ -283,8 +281,8 @@ function Publish-Artifact
     [System.Collections.ArrayList] $artifacts = new-object System.Collections.ArrayList
     
     # Get the build.log file for each build configuration        
-    Add-BuildLog -artifacts $artifacts -buildLog (Get-BuildLogFile -root $repoRoot.FullName -Configuration Release)
-    #Add-BuildLog -artifacts $artifacts -buildLog (Get-BuildLogFile -root $repoRoot.FullName -Configuration Release -NativeHostArch x86)
+    Add-BuildLog -artifacts $artifacts -buildLog (Get-BuildLogFile -root $env:APPVEYOR_BUILD_FOLDER -Configuration Release -NativeHostArch x64)
+    Add-BuildLog -artifacts $artifacts -buildLog (Get-BuildLogFile -root $env:APPVEYOR_BUILD_FOLDER -Configuration Release -NativeHostArch x86)
 
 
     Add-Artifact -artifacts $artifacts -FileToAdd $Script:E2EResult
@@ -411,7 +409,8 @@ function Invoke-OpenSSHUnitTests
                 if ($errorCode -ne 0)
                 {
                     $errorMessage = "$unittestFile failed.`nExitCode: $errorCode. Detail test log is at $Script:UnitTestResult."
-                    Write-BuildMessage -Message $errorMessage  -Category Warning                       
+                    Write-BuildMessage -Message $errorMessage  -Category Warning
+                    Set-BuildVariable TestPassed False
                 }
                 else
                 {

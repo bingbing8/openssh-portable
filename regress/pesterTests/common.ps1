@@ -186,7 +186,6 @@ function Write-SSHConfig
         }
 }
 
-
 if(-not [string]::IsNullOrWhiteSpace($OpenSSHBinPath)) {
     $Script:BinaryPath = $OpenSSHBinPath
 }
