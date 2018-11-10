@@ -65,12 +65,13 @@ Describe "E2E scenarios for ssh client" -Tags "CI" {
 
         It "$tC.$tI - test version" {
             iex "cmd /c `"ssh -V 2> $stderrFile`""
-            $stderrFile | Should Contain "OpenSSH_for_Windows"
+            Get-Content $stderrFile | write-host
+            $stderrFile | Should -FileContentMatch "OpenSSH_for_Windows *"
         }
 
         It "$tC.$tI - test help" {
             iex "cmd /c `"ssh -? 2> $stderrFile`""
-            $stderrFile | Should Contain "usage: ssh"
+            $stderrFile | Should -FileContentMatch "usage: ssh *"
         }
         
         It "$tC.$tI - remote echo command" {
@@ -99,7 +100,7 @@ Describe "E2E scenarios for ssh client" -Tags "CI" {
 
         It "$tC.$tI - stdout to file" -skip:$skip {
             ssh -F $ssh_config_file test_target powershell get-process > $stdoutFile
-            $stdoutFile | Should Contain "ProcessName"
+            $stdoutFile | Should -FileContentMatch "ProcessName"
         }
 
         It "$tC.$tI - stdout to PS object" {
@@ -215,7 +216,7 @@ Describe "E2E scenarios for ssh client" -Tags "CI" {
         }
         It "$tC.$tI - default shell as cmd" -skip:$skip {            
             $o = ssh -F $ssh_config_file test_target where cmd
-            $o | Should Contain "cmd"            
+            $o | Should -BeLike "cmd"            
         }
         It "$tC.$tI - cmd as default shell and double quotes in cmdline" {
             # actual command line ssh target echo "\"hello\""
@@ -255,8 +256,8 @@ Describe "E2E scenarios for ssh client" -Tags "CI" {
             $o = ssh -v -E $logFile -F $ssh_config_file test_target echo 1234
             $o | Should Be "1234"
             #TODO - checks below are very inefficient (time taking). 
-            $logFile | Should Contain "OpenSSH_"
-            $logFile | Should Contain "Exit Status 0"
+            $logFile | Should -FileContentMatch "OpenSSH_"
+            $logFile | Should -FileContentMatch "Exit Status 0"
         }
 
 
@@ -267,8 +268,8 @@ Describe "E2E scenarios for ssh client" -Tags "CI" {
             #good cipher, ensure cipher is used from debug logs
             $o = ssh -c aes256-ctr  -v -E $logFile -F $ssh_config_file test_target echo 1234
             $o | Should Be "1234"
-            $logFile | Should Contain "kex: server->client cipher: aes256-ctr"
-            $logFile | Should Contain "kex: client->server cipher: aes256-ctr"
+            $logFile | Should -FileContentMatch "kex: server->client cipher: aes256-ctr"
+            $logFile | Should -FileContentMatch "kex: client->server cipher: aes256-ctr"
         }
 
         It "$tC.$tI - ssh_config (-F)" {
@@ -276,9 +277,9 @@ Describe "E2E scenarios for ssh client" -Tags "CI" {
             $badConfigFile = Join-Path $testDir "$tC.$tI.bad_ssh_config"
             "bad_config_line" | Set-Content $badConfigFile
             iex "cmd /c `"ssh -F $badConfigFile test_target echo 1234 2>$stderrFile`""
-            $stderrFile | Should Contain "bad_ssh_config"
-            $stderrFile | Should Contain "bad_config_line"
-            $stderrFile | Should Contain "bad configuration options"
+            $stderrFile | Should -FileContentMatch "bad_ssh_config"
+            $stderrFile | Should -FileContentMatch "bad_config_line"
+            $stderrFile | Should -FileContentMatch "bad configuration options"
 
             #try with a proper configuration file. Put it on a unicode path with unicode content
             #so we can test the Unicode support simultaneously
@@ -299,11 +300,11 @@ Describe "E2E scenarios for ssh client" -Tags "CI" {
             #-4
             $o = ssh -4 -v -E $logFile -F $ssh_config_file test_target echo 1234
             $o | Should Be "1234"
-            $logFile | Should Contain "[127.0.0.1]"
+            $logFile | Should -FileContentMatch "[127.0.0.1]"
             #-4
             $o = ssh -6 -v -E $logFile -F $ssh_config_file test_target echo 1234
             $o | Should Be "1234"
-            $logFile | Should Contain "[::1]"            
+            $logFile | Should -FileContentMatch "[::1]"            
         }
 
         It "$tC.$tI - auto populate known hosts" {
@@ -317,14 +318,14 @@ Describe "E2E scenarios for ssh client" -Tags "CI" {
 
         It "ProxyCommand with file name only" {            
             & cmd /c "ssh -o ProxyCommand=`"cmd.exe /c echo test string for invalid proxy 1>&2`" abc 2>$stderrFile"
-            $stderrFile | Should Contain "test string for invalid proxy"
+            $stderrFile | Should -FileContentMatch "test string for invalid proxy"
             write-host (Get-Content $stderrFile)
-            #$stderrFile | Should Contain "Connection closed by remote host"
+            #$stderrFile | Should -FileContentMatch "Connection closed by remote host"
         }
 
         It "ProxyCommand with absolute path to the file" {
             & cmd /c "ssh -o ProxyCommand=`"$($env:ComSpec) /c echo test string for invalid proxy 1>&2`" abc 2>$stderrFile"
-            $stderrFile | Should Contain "test string for invalid proxy"
+            $stderrFile | Should -FileContentMatch "test string for invalid proxy"
             write-host  (Get-Content $stderrFile)
             #$stderrFile | Should Contain "Connection closed by remote host"
         }

@@ -148,7 +148,7 @@ function Install-Pester
     $isModuleAvailable = Get-Module 'Pester' -ListAvailable
     if (-not ($isModuleAvailable))
     {
-        choco install Pester --version 3.4.6 -y --force --limitoutput
+        choco install Pester -y --force --limitoutput
     }
 }
 
