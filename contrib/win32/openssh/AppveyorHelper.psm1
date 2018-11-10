@@ -3,10 +3,10 @@ Set-StrictMode -Version 2.0
 If ($PSVersiontable.PSVersion.Major -le 2) {$PSScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path}
 Import-Module $PSScriptRoot\OpenSSHCommonUtils.psm1 -Force
 Import-Module $PSScriptRoot\OpenSSHBuildHelper.psm1 -Force
-Import-Module $PSScriptRoot\OpenSSHTestHelper.psm1 -Force
 
 $repoRoot = Get-RepositoryRoot
 $script:messageFile = join-path $repoRoot.FullName "BuildMessage.log"
+$Script:TestResultsDir = "$env:temp\OpenSSHTestResults\"
 
 # Write the build message
 Function Write-BuildMessage
@@ -307,17 +307,17 @@ function Publish-Artifact
 #>
 function Invoke-OpenSSHTests
 {
-    Set-BasicTestInfo -Confirm:$false
-    Invoke-OpenSSHSetupTest
-    if (($OpenSSHTestInfo -eq $null) -or (-not (Test-Path $OpenSSHTestInfo["SetupTestResultsFile"])))
-    {
-        Write-Warning "Test result file $OpenSSHTestInfo["SetupTestResultsFile"] not found after tests."
-        Write-BuildMessage -Message "Test result file $OpenSSHTestInfo["SetupTestResultsFile"] not found after tests." -Category Error
-        Set-BuildVariable TestPassed False
-        Write-Warning "Stop running further tests!"
-        return
-    }
-    $xml = [xml](Get-Content $OpenSSHTestInfo["SetupTestResultsFile"] | out-string)
+	Import-Module pester -force -global
+    Push-Location $($env:APPVEYOR_BUILD_FOLDER)\regress\pesterTests
+    Write-Log -Message "Running OpenSSH tests..."
+    $testList = "$($env:APPVEYOR_BUILD_FOLDER)\regress\pesterTests\SSH.Tests.ps1"
+
+	if(-not (Test-Path $Script:TestResultsDir -PathType Container)) {
+		New-Item $Script:TestResultsDir -ItemType File -Force -ErrorAction SilentlyContinue| Out-Null
+	}
+    Invoke-Pester $testList -OutputFormat NUnitXml -OutputFile "$Script:TestResultsDir\E2Eresult.xml" -Tag 'CI' -PassThru
+    Pop-Location
+	$xml = [xml](Get-Content "$Script:TestResultsDir\E2Eresult.xml" | out-string)
     if ([int]$xml.'test-results'.failures -gt 0) 
     {
         $errorMessage = "$($xml.'test-results'.failures) setup tests in regress\pesterTests failed. Detail test log is at $($OpenSSHTestInfo["SetupTestResultsFile"])."
@@ -326,61 +326,6 @@ function Invoke-OpenSSHTests
         Set-BuildVariable TestPassed False
         Write-Warning "Stop running further tests!"
         return
-    }
-
-    Write-Host "Start running unit tests"
-    $unitTestFailed = Invoke-OpenSSHUnitTest
-
-    if($unitTestFailed)
-    {
-        Write-Host "At least one of the unit tests failed!" -ForegroundColor Yellow
-        Write-BuildMessage "At least one of the unit tests failed!" -Category Error
-        Set-BuildVariable TestPassed False
-    }
-    else
-    {
-        Write-Host "All Unit tests passed!"
-        Write-BuildMessage -Message "All Unit tests passed!" -Category Information    
-    }
-
-    # Run all E2E tests.
-    Set-OpenSSHTestEnvironment -Confirm:$false
-    Invoke-OpenSSHE2ETest
-    if (($OpenSSHTestInfo -eq $null) -or (-not (Test-Path $OpenSSHTestInfo["E2ETestResultsFile"])))
-    {
-        Write-Warning "Test result file $OpenSSHTestInfo["E2ETestResultsFile"] not found after tests."
-        Write-BuildMessage -Message "Test result file $OpenSSHTestInfo["E2ETestResultsFile"] not found after tests." -Category Error
-        Set-BuildVariable TestPassed False
-        Write-Warning "Stop running further tests!"
-        return
-    }
-    $xml = [xml](Get-Content $OpenSSHTestInfo["E2ETestResultsFile"] | out-string)
-    if ([int]$xml.'test-results'.failures -gt 0) 
-    {
-        $errorMessage = "$($xml.'test-results'.failures) tests in regress\pesterTests failed. Detail test log is at $($OpenSSHTestInfo["E2ETestResultsFile"])."
-        Write-Warning $errorMessage
-        Write-BuildMessage -Message $errorMessage -Category Error
-        Set-BuildVariable TestPassed False
-        Write-Warning "Stop running further tests!"
-        return
-    }    
-
-    Invoke-OpenSSHUninstallTest
-    if (($OpenSSHTestInfo -eq $null) -or (-not (Test-Path $OpenSSHTestInfo["UninstallTestResultsFile"])))
-    {
-        Write-Warning "Test result file $OpenSSHTestInfo["UninstallTestResultsFile"] not found after tests."
-        Write-BuildMessage -Message "Test result file $OpenSSHTestInfo["UninstallTestResultsFile"] not found after tests." -Category Error
-        Set-BuildVariable TestPassed False
-    }
-    else {
-        $xml = [xml](Get-Content $OpenSSHTestInfo["UninstallTestResultsFile"] | out-string)
-        if ([int]$xml.'test-results'.failures -gt 0) 
-        {
-            $errorMessage = "$($xml.'test-results'.failures) uninstall tests in regress\pesterTests failed. Detail test log is at $($OpenSSHTestInfo["UninstallTestResultsFile"])."
-            Write-Warning $errorMessage
-            Write-BuildMessage -Message $errorMessage -Category Error
-            Set-BuildVariable TestPassed False
-        }
     }
 
     # Writing out warning when the $Error.Count is non-zero. Tests Should clean $Error after success.
@@ -398,33 +343,14 @@ function Publish-OpenSSHTestResults
 { 
     if ($env:APPVEYOR_JOB_ID)
     {
-        $setupresultFile = Resolve-Path $Global:OpenSSHTestInfo["SetupTestResultsFile"] -ErrorAction Ignore
-        if( (Test-Path $Global:OpenSSHTestInfo["SetupTestResultsFile"]) -and $setupresultFile)
-        {
-            (New-Object 'System.Net.WebClient').UploadFile("https://ci.appveyor.com/api/testresults/nunit/$($env:APPVEYOR_JOB_ID)", $setupresultFile)
-             Write-BuildMessage -Message "Setup test results uploaded!" -Category Information
-        }
-
-        $E2EresultFile = Resolve-Path $Global:OpenSSHTestInfo["E2ETestResultsFile"] -ErrorAction Ignore
-        if( (Test-Path $Global:OpenSSHTestInfo["E2ETestResultsFile"]) -and $E2EresultFile)
+        $E2EresultFile = Resolve-Path "$Script:TestResultsDir\E2Eresult.xml" -ErrorAction Ignore
+        if( (Test-Path "$Script:TestResultsDir\E2Eresult.xml") -and $E2EresultFile)
         {
             (New-Object 'System.Net.WebClient').UploadFile("https://ci.appveyor.com/api/testresults/nunit/$($env:APPVEYOR_JOB_ID)", $E2EresultFile)
              Write-BuildMessage -Message "E2E test results uploaded!" -Category Information
         }
-
-        $uninstallResultFile = Resolve-Path $Global:OpenSSHTestInfo["UninstallTestResultsFile"] -ErrorAction Ignore
-        if( (Test-Path $Global:OpenSSHTestInfo["UninstallTestResultsFile"]) -and $uninstallResultFile)
-        {
-            (New-Object 'System.Net.WebClient').UploadFile("https://ci.appveyor.com/api/testresults/nunit/$($env:APPVEYOR_JOB_ID)", $uninstallResultFile)
-             Write-BuildMessage -Message "Uninstall test results uploaded!" -Category Information
-        }
     }
 
-    if ($env:DebugMode)
-    {
-        Remove-Item $env:DebugMode
-    }
-    
     if($env:TestPassed -ieq 'True')
     {
         Write-BuildMessage -Message "The checkin validation success!" -Category Information

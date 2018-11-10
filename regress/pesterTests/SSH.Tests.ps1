@@ -1,52 +1,24 @@
 ﻿If ($PSVersiontable.PSVersion.Major -le 2) {$PSScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path}
-. $PSScriptRoot\TestUtils.ps1
+
 #todo: -i -q -v -l -c -C
 #todo: -S -F -V -e
 $tC = 1
 $tI = 0
 $suite = "sshclient"
+$testDir = "$env:temp\$suite"
+. $PSScriptRoot\common.ps1 -suite $suite -TestDir $testDir
         
 Describe "E2E scenarios for ssh client" -Tags "CI" {
-    BeforeAll {
-        $binpath = Get-OpenSSHBinPath
-        if(-not $env:path.tolower().startswith($binpath.tolower())){
-            $env:path = "$binpath;$env:path"
-        }
-
+    BeforeAll {        
         $port = 47002
-        $testDir = Join-Path $env:temp $suite
-        if(-not (Test-Path $testDir))
-        {
-            New-Item $testDir -ItemType directory -Force -ErrorAction SilentlyContinue | Out-Null
-        }
-        else {
-            Get-ChildItem $testDir | Remove-Item | Out-Null
-        }
-
-        $Host_Key_File = "$testDir\hostkey_ed25519"
-        
-        & "$binpath\ssh-keygen.exe" -t ed25519 -P "`"`"" -f $Host_Key_File
-        $user_key = "$testDir\user_key_ed25519"
-
-        & "$binpath\ssh-keygen.exe" -t ed25519 -P "`"`"" -f $user_key
-
-        $Authorized_Keys_File = "$testDir\Authorized_Keys"
-        copy-item "$user_key.pub" $Authorized_Keys_File -force
-
-        Write-SSHDConfig -Port $port -Host_Key_File $Host_Key_File -Authorized_Keys_File $Authorized_Keys_File -BinPath $binpath -SSHD_Config_Path "$testDir\sshd_config"        
-
-        Start-SSHDDaemon -SSHD_Config_Path "$testDir\sshd_config"
-
-        #generate known hosts
+        $server = "localhost"
+        $ssh_config_file = "$testDir\ssh_config"
+        $user_key_type = "ed25519"
+        $user_key_file = "$testDir\user_key_$user_key_type"
         $known_host_file = "$testDir\known_hosts"
 
-        #& "$binpath\ssh-keyscan.exe" -p $port localhost 1> $known_host_file 2> "error.txt"
-        $hk = (Get-content "$Host_Key_File.pub") -split ' '
-        "[localhost]:$port $hk[0] $hk[1]" | set-Content $known_host_file
-        
-        $ssh_config_file = "$testDir\ssh_config"
-        Write-SSHConfig -Suite $suite -Target "test_target" -HostName "localhost" -Port $port -IdentityFile $user_key -UserKnownHostsFile $known_host_file -SSH_Config_Path $ssh_config_file
-
+        #other default vars: -TargetName "test_target" -host_key_type "ed25519" -user_key_type "ed25519"
+        Set-TestCommons -port $port -Server $server -ssh_config_file $ssh_config_file -user_key_file $user_key_file -known_host_file $known_host_file
 
         #skip on ps 2 becase non-interactive cmd require a ENTER before it returns on ps2
         $skip = $PSVersionTable.PSVersion.Major -le 2
@@ -83,11 +55,8 @@ Describe "E2E scenarios for ssh client" -Tags "CI" {
     AfterEach {$tI++;}
 
     AfterAll {
-        Stop-SSHDDaemon
-        if($env:path.tolower().startswith($binpath.tolower())){
-                $env:path = $env:path.replace("$binpath.tolower();", "")
-            }
-        }
+        Clear-TestCommons
+    }
 
    Context "$tC - Basic Scenarios" {
         
@@ -315,9 +284,9 @@ Describe "E2E scenarios for ssh client" -Tags "CI" {
             $goodConfigFile = Join-Path $testDir "$tC.$tI.Очень_хорошо_ssh_config"
             "#this is a Unicode comment because it contains русский язык" | Set-Content $goodConfigFile -Encoding UTF8
             "Host myhost" | Add-Content $goodConfigFile
-            "    HostName localhost" | Add-Content $goodConfigFile
+            "    HostName $server" | Add-Content $goodConfigFile
             "    Port $port" | Add-Content $goodConfigFile
-            "    IdentityFile $user_key" | Add-Content $goodConfigFile
+            "    IdentityFile $user_key_file" | Add-Content $goodConfigFile
             "    UserKnownHostsFile $known_host_file" | Add-Content $goodConfigFile
             $o = ssh -F $goodConfigFile myhost echo 1234
             $o | Should Be "1234"          
