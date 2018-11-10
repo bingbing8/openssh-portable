@@ -7,6 +7,7 @@ Import-Module $PSScriptRoot\OpenSSHBuildHelper.psm1 -Force
 $repoRoot = Get-RepositoryRoot
 $script:messageFile = join-path $repoRoot.FullName "BuildMessage.log"
 $Script:TestResultsDir = "$env:temp\OpenSSHTestResults\"
+$Script:E2EResult = "$Script:TestResultsDir\E2Eresult.xml"
 
 # Write the build message
 Function Write-BuildMessage
@@ -82,7 +83,6 @@ function Invoke-AppVeyorFull
     try {        
         Invoke-AppVeyorBuild
         Install-OpenSSH
-        Set-OpenSSHTestEnvironment -confirm:$false
         Invoke-OpenSSHTests
         Publish-Artifact
     }
@@ -285,14 +285,8 @@ function Publish-Artifact
     Add-BuildLog -artifacts $artifacts -buildLog (Get-BuildLogFile -root $repoRoot.FullName -Configuration Release)
     #Add-BuildLog -artifacts $artifacts -buildLog (Get-BuildLogFile -root $repoRoot.FullName -Configuration Release -NativeHostArch x86)
 
-    <#if($Global:OpenSSHTestInfo)
-    {
-        Add-Artifact -artifacts $artifacts -FileToAdd $Global:OpenSSHTestInfo["SetupTestResultsFile"]
-        Add-Artifact -artifacts $artifacts -FileToAdd $Global:OpenSSHTestInfo["UnitTestResultsFile"]
-        Add-Artifact -artifacts $artifacts -FileToAdd $Global:OpenSSHTestInfo["E2ETestResultsFile"]
-        Add-Artifact -artifacts $artifacts -FileToAdd $Global:OpenSSHTestInfo["UninstallTestResultsFile"]
-        Add-Artifact -artifacts $artifacts -FileToAdd $Global:OpenSSHTestInfo["TestSetupLogFile"]
-    }#>
+
+    Add-Artifact -artifacts $artifacts -FileToAdd $Script:E2EResult
     
     foreach ($artifact in $artifacts)
     {
@@ -308,16 +302,18 @@ function Publish-Artifact
 function Invoke-OpenSSHTests
 {
 	Import-Module pester -force -global
-    Push-Location $($env:APPVEYOR_BUILD_FOLDER)\regress\pesterTests
+	Write-Host "repoRoot: $repoRoot.FullName"
+	Write-Host "env:APPVEYOR_BUILD_FOLDER: $env:APPVEYOR_BUILD_FOLDER"
+    Push-Location $($repoRoot.FullName)\regress\pesterTests
     Write-Log -Message "Running OpenSSH tests..."
-    $testList = "$($env:APPVEYOR_BUILD_FOLDER)\regress\pesterTests\SSH.Tests.ps1"
+    $testList = "$($repoRoot.FullName)\regress\pesterTests\SSH.Tests.ps1"
 
-	if(-not (Test-Path $Script:TestResultsDir -PathType Container)) {
-		New-Item $Script:TestResultsDir -ItemType File -Force -ErrorAction SilentlyContinue| Out-Null
-	}
-    Invoke-Pester $testList -OutputFormat NUnitXml -OutputFile "$Script:TestResultsDir\E2Eresult.xml" -Tag 'CI' -PassThru
+    if(-not (Test-Path $Script:TestResultsDir -PathType Container)) {
+        New-Item $Script:TestResultsDir -ItemType File -Force -ErrorAction SilentlyContinue| Out-Null
+    }
+    Invoke-Pester $testList -OutputFormat NUnitXml -OutputFile $Script:E2EResult -Tag 'CI' -PassThru
     Pop-Location
-	$xml = [xml](Get-Content "$Script:TestResultsDir\E2Eresult.xml" | out-string)
+    $xml = [xml](Get-Content $Script:E2EResult | out-string)
     if ([int]$xml.'test-results'.failures -gt 0) 
     {
         $errorMessage = "$($xml.'test-results'.failures) setup tests in regress\pesterTests failed. Detail test log is at $($OpenSSHTestInfo["SetupTestResultsFile"])."
@@ -343,8 +339,8 @@ function Publish-OpenSSHTestResults
 { 
     if ($env:APPVEYOR_JOB_ID)
     {
-        $E2EresultFile = Resolve-Path "$Script:TestResultsDir\E2Eresult.xml" -ErrorAction Ignore
-        if( (Test-Path "$Script:TestResultsDir\E2Eresult.xml") -and $E2EresultFile)
+        $E2EresultFile = Resolve-Path $Script:E2EResult -ErrorAction Ignore
+        if( (Test-Path $Script:E2EResult) -and $E2EresultFile)
         {
             (New-Object 'System.Net.WebClient').UploadFile("https://ci.appveyor.com/api/testresults/nunit/$($env:APPVEYOR_JOB_ID)", $E2EresultFile)
              Write-BuildMessage -Message "E2E test results uploaded!" -Category Information
