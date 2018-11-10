@@ -303,11 +303,11 @@ function Invoke-OpenSSHTests
 {
 	Import-Module pester -force -global
     Write-BuildMessage -Message "Running OpenSSH tests..." -Category Information
-	#only ssh tests for now
+    #only ssh tests for now
     $testList = "$env:APPVEYOR_BUILD_FOLDER\regress\pesterTests\SSH.Tests.ps1"
 
     if(-not (Test-Path $Script:TestResultsDir -PathType Container)) {
-        New-Item $Script:TestResultsDir -ItemType File -Force -ErrorAction SilentlyContinue| Out-Null
+        New-Item $Script:TestResultsDir -ItemType Directory -Force -ErrorAction SilentlyContinue| Out-Null
     }
     Invoke-Pester $testList -OutputFormat NUnitXml -OutputFile $Script:E2EResult -Tag 'CI' -PassThru
 
@@ -334,7 +334,8 @@ function Invoke-OpenSSHTests
       upload OpenSSH pester test results.
 #>
 function Publish-OpenSSHTestResults
-{ 
+{
+	Write-BuildMessage -Message "Publishing OpenSSHTestResults" -Category Information
     if ($env:APPVEYOR_JOB_ID)
     {
         $E2EresultFile = Resolve-Path $Script:E2EResult -ErrorAction Ignore
