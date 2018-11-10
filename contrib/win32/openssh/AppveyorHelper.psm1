@@ -150,7 +150,7 @@ function Install-Pester
     $isModuleAvailable = Get-Module 'Pester' -ListAvailable
     if (-not ($isModuleAvailable))
     {
-        choco install Pester --version 3.4.6 -y --force --limitoutput
+        choco install Pester -y --force --limitoutput
     }
 }
 
@@ -288,6 +288,7 @@ function Publish-Artifact
 
 
     Add-Artifact -artifacts $artifacts -FileToAdd $Script:E2EResult
+    Add-Artifact -artifacts $artifacts -FileToAdd $Script:UnitTestResult
     
     foreach ($artifact in $artifacts)
     {
@@ -325,7 +326,7 @@ function Invoke-OpenSSHE2ETests
     $xml = [xml](Get-Content $Script:E2EResult | out-string)
     if ([int]$xml.'test-results'.failures -gt 0) 
     {
-        $errorMessage = "$($xml.'test-results'.failures) setup tests in regress\pesterTests failed. Detail test log is at $($OpenSSHTestInfo["SetupTestResultsFile"])."
+        $errorMessage = "$($xml.'test-results'.failures) setup tests in regress\pesterTests failed. Detail test log is at $Script:E2EResult."
         Write-BuildMessage -Message $errorMessage -Category Error
         Set-BuildVariable TestPassed False
         return
@@ -377,7 +378,7 @@ function Invoke-OpenSSHUnitTests
     $testFolders = Get-ChildItem -filter unittest-*.exe -Recurse |
                  ForEach-Object{ Split-Path $_.FullName} |
                  Sort-Object -Unique
-    $testfailed = $false
+
     if ($testFolders -ne $null)
     {
         $testFolders | % {
@@ -409,7 +410,6 @@ function Invoke-OpenSSHUnitTests
                 }
                 if ($errorCode -ne 0)
                 {
-                    $testfailed = $true
                     $errorMessage = "$unittestFile failed.`nExitCode: $errorCode. Detail test log is at $Script:UnitTestResult."
                     Write-BuildMessage -Message $errorMessage  -Category Warning                       
                 }
@@ -421,7 +421,6 @@ function Invoke-OpenSSHUnitTests
         }
     }
     Pop-Location
-    $testfailed
 }
 
 <#
@@ -439,14 +438,6 @@ function Publish-OpenSSHTestResults
             (New-Object 'System.Net.WebClient').UploadFile("https://ci.appveyor.com/api/testresults/nunit/$($env:APPVEYOR_JOB_ID)", $E2EresultFile)
              Write-BuildMessage -Message "E2E test results uploaded!" -Category Information
         }
-
-        $UnitTestResultFile = Resolve-Path $Script:UnitTestResult -ErrorAction Ignore
-        if( (Test-Path $Script:UnitTestResult) -and $UnitTestResultFile)
-        {
-            (New-Object 'System.Net.WebClient').UploadFile("https://ci.appveyor.com/api/testresults/nunit/$($env:APPVEYOR_JOB_ID)", $UnitTestResultFile)
-             Write-BuildMessage -Message "E2E test results uploaded!" -Category Information
-        }
-
     }
 
     if($env:TestPassed -ieq 'True')
