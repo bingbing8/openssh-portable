@@ -18,30 +18,21 @@ function Find-OpenSSHBinPath
     else
     {
         $NativeHostArch = "x64"
-    }    
-    Get-ChildItem (join-path "$psscriptroot\..\..\bin\$NativeHostArch" "$Configuration\sshd.exe")
-
+    }
     $sshdPath = Resolve-Path (join-path "$psscriptroot\..\..\bin\$NativeHostArch" "$Configuration\sshd.exe") -ErrorAction Ignore
     if($sshdPath -eq $null)
     {
         $sshdPath = get-command sshd.exe -ErrorAction SilentlyContinue 
-    }
-    else {
-        Write-host "find sshd in repo"
     }
     
     if($sshdPath -eq $null)
     {
         Throw "Cannot find sshd.exe. Please build openssh in repro or set the Path environment to openssh daemon."
     }
-    else {
-        Write-host "find sshd from path"
-    }
 
     $SSHDBinPath = $sshdPath.Path
 
     $Script:SSHBinaryPath = Split-Path $SSHDBinPath
-    Write-host "binary path is :$Script:SSHBinaryPath"
     $Script:SSHBinaryPath
 }
 

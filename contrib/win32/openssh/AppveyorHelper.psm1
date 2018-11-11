@@ -224,10 +224,12 @@ function Invoke-OpenSSHE2ETests
 {
 	Import-Module pester -force -global
     Write-BuildMessage -Message "Running OpenSSH tests..." -Category Information
+    Push-Location "$env:APPVEYOR_BUILD_FOLDER\regress\pesterTests"
     #only ssh tests for now
     $testList = "$env:APPVEYOR_BUILD_FOLDER\regress\pesterTests\SSH.Tests.ps1"
     
     Invoke-Pester $testList -OutputFormat NUnitXml -OutputFile $Script:E2EResult -Tag 'CI' -PassThru
+    Pop-Location
 
     $xml = [xml](Get-Content $Script:E2EResult | out-string)
     if ([int]$xml.'test-results'.failures -gt 0) 

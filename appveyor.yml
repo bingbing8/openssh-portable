@@ -5,8 +5,6 @@ branches:
   only:
     - latestw_all
     - hotfix
-init:
-  - ps: iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
 
 build_script:
   - ps: |
@@ -21,7 +19,7 @@ after_build:
       if($arch -ieq 'x86') {$foldername = "win32"} else { $foldername = $arch = "x64" } 
       $lib = "$env:APPVEYOR_BUILD_FOLDER\bin\$foldername\Release\libcrypto.dll"
       write-host "$env:APPVEYOR_BUILD_FOLDER\contrib\win32\openssh\LibreSSL\bin\desktop\$arch\libcrypto.dll"
-      write-host "$env:APPVEYOR_BUILD_FOLDER\bin\$foldername\Release\"
+      write-host $env:APPVEYOR_BUILD_FOLDER\bin\$foldername\Release\
       if(-not (Test-path $lib)) { Copy-Item "$env:APPVEYOR_BUILD_FOLDER\contrib\win32\openssh\LibreSSL\bin\desktop\$arch\libcrypto.dll" "$env:APPVEYOR_BUILD_FOLDER\bin\$foldername\Release\" -Force }
 
 test_script:
@@ -36,6 +34,5 @@ after_test:
 
 on_finish:
   - ps: |
-      $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
       Import-Module $env:APPVEYOR_BUILD_FOLDER\contrib\win32\openssh\AppveyorHelper.psm1
       Publish-Artifact
