@@ -20,8 +20,7 @@ function Find-OpenSSHBinPath
     else
     {
         $NativeHostArch = "x64"
-    }  
-    
+    }    
 
     $sshdPath = Resolve-Path (join-path "..\..\bin\$NativeHostArch" "$Configuration\sshd.exe") -ErrorAction Ignore
     if($sshdPath -eq $null)
@@ -66,7 +65,7 @@ function Set-TestCommons
         $host_key_files = @()
         $host_key_type | % {
             $host_key = "$Script:TestDirectory\hostkey_$_"
-            $host_key_files += $host_key     
+            $host_key_files += $host_key
             ssh-keygen.exe -t $_ -P "`"`"" -f $host_key
         }
    

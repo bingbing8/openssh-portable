@@ -9,7 +9,7 @@ $testDir = "$env:temp\$suite"
 . $PSScriptRoot\common.ps1 -suite $suite -TestDir $testDir
         
 Describe "E2E scenarios for ssh client" -Tags "CI" {
-    BeforeAll {        
+    BeforeAll {
         $port = 47002
         $server = "localhost"
         $ssh_config_file = "$testDir\ssh_config"
@@ -319,15 +319,13 @@ Describe "E2E scenarios for ssh client" -Tags "CI" {
         It "ProxyCommand with file name only" {            
             & cmd /c "ssh -o ProxyCommand=`"cmd.exe /c echo test string for invalid proxy 1>&2`" abc 2>$stderrFile"
             $stderrFile | Should -FileContentMatch "test string for invalid proxy"
-            write-host (Get-Content $stderrFile)
             #$stderrFile | Should -FileContentMatch "Connection closed by remote host"
         }
 
         It "ProxyCommand with absolute path to the file" {
             & cmd /c "ssh -o ProxyCommand=`"$($env:ComSpec) /c echo test string for invalid proxy 1>&2`" abc 2>$stderrFile"
             $stderrFile | Should -FileContentMatch "test string for invalid proxy"
-            write-host  (Get-Content $stderrFile)
-            #$stderrFile | Should Contain "Connection closed by remote host"
+            #$stderrFile | Should -FileContentMatch "Connection closed by remote host"
         }
     }    
 }
