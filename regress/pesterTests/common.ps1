@@ -6,14 +6,12 @@ $Script:BinaryPath = ""
 $Script:TestDirectory = $TestDir
 $Script:TestSuite = $Suite
 
-
-
 function Find-OpenSSHBinPath
 {
     param([string]$Configuration = "Release")
 
     [string] $NativeHostArch = $env:PROCESSOR_ARCHITECTURE
-    if($NativeHostArch -eq 'x86')
+    if($NativeHostArch -ieq 'x86')
     {
         $NativeHostArch = "Win32"
     }
@@ -54,6 +52,9 @@ function Set-TestCommons
         if(-not $env:path.tolower().startswith($Script:BinaryPath.tolower())){
             $env:path = "$Script:BinaryPath;$env:path"
         }
+
+        write-host $Script:BinaryPath
+        write-host (Test-path "$Script:BinaryPath\libcrypto-41.dll")
 
         if(-not (Test-Path $Script:TestDirectory))
         {
