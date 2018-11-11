@@ -2,7 +2,7 @@
 
 If ($PSVersiontable.PSVersion.Major -le 2) {$PSScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path}
 $Script:newProcess = $null
-$Script:BinaryPath = ""
+$Script:SSHBinaryPath = ""
 $Script:TestDirectory = $TestDir
 $Script:TestSuite = $Suite
 
@@ -25,16 +25,23 @@ function Find-OpenSSHBinPath
     {
         $sshdPath = get-command sshd.exe -ErrorAction SilentlyContinue 
     }
+    else {
+        Write-host "find sshd in repo"
+    }
     
     if($sshdPath -eq $null)
     {
         Throw "Cannot find sshd.exe. Please build openssh in repro or set the Path environment to openssh daemon."
     }
+    else {
+        Write-host "find sshd from path"
+    }
 
     $SSHDBinPath = $sshdPath.Path
 
-    $Script:BinaryPath = Split-Path $SSHDBinPath
-    $Script:BinaryPath
+    $Script:SSHBinaryPath = Split-Path $SSHDBinPath
+    Write-host "binary path is :$Script:SSHBinaryPath"
+    $Script:SSHBinaryPath
 }
 
 function Set-TestCommons
@@ -49,12 +56,12 @@ function Set-TestCommons
         [string]$server = "localhost",
         [string]$ssh_config_file = "$Script:TestDirectory\ssh_config")
 
-        if(-not $env:path.tolower().startswith($Script:BinaryPath.tolower())){
-            $env:path = "$Script:BinaryPath;$env:path"
+        if(-not $env:path.tolower().startswith($Script:SSHBinaryPath.tolower())){
+            $env:path = "$Script:SSHBinaryPath;$env:path"
         }
 
-        write-host $Script:BinaryPath
-        write-host (Test-path "$Script:BinaryPath\libcrypto-41.dll")
+        write-host $Script:SSHBinaryPath
+        write-host (Test-path "$Script:SSHBinaryPath\libcrypto-41.dll")
 
         if(-not (Test-Path $Script:TestDirectory))
         {
@@ -99,7 +106,7 @@ function Start-SSHDDaemon
         $existingProcesseIDs = $existingProcesses.id
     }    
     
-    Start-process -FilePath "$($Script:BinaryPath)\sshd.exe" -ArgumentList "-f $SSHD_Config_Path" -NoNewWindow
+    Start-process -FilePath "$($Script:SSHBinaryPath)\sshd.exe" -ArgumentList "-f $SSHD_Config_Path" -NoNewWindow
     
     #Sleep for 1 seconds for process to ready to listen
     $num = 0
@@ -115,8 +122,8 @@ function Start-SSHDDaemon
 function Clear-TestCommons
 {
     Stop-SSHDDaemon
-    if($env:path.tolower().startswith($Script:BinaryPath.tolower())){
-        $env:path = $env:path.replace("$Script:BinaryPath.tolower();", "")
+    if($env:path.tolower().startswith($Script:SSHBinaryPath.tolower())){
+        $env:path = $env:path.replace("$Script:SSHBinaryPath.tolower();", "")
     }        
 }
 
@@ -187,8 +194,8 @@ function Write-SSHConfig
 }
 
 if(-not [string]::IsNullOrWhiteSpace($OpenSSHBinPath)) {
-    $Script:BinaryPath = $OpenSSHBinPath
+    $Script:SSHBinaryPath = $OpenSSHBinPath
 }
 else {
-    $Script:BinaryPath = Find-OpenSSHBinPath
+    $Script:SSHBinaryPath = Find-OpenSSHBinPath
 }
