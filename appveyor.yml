@@ -19,7 +19,7 @@ after_build:
       Install-Pester
       $arch = $env:PROCESSOR_ARCHITECTURE
       if($arch -eq 'amd64') { $foldername = $arch = "x64" } else {$foldername = "win32"}
-      $lib = "$env:APPVEYOR_BUILD_FOLDER\contrib\win32\openssh\LibreSSL\bin\desktop\$arch\libcrypto.dll"
+      $lib = "$env:APPVEYOR_BUILD_FOLDER\bin\$foldername\Release\libcrypto.dll"
       if(-not (Test-path $lib)) { Copy-Item $env:APPVEYOR_BUILD_FOLDER\contrib\win32\openssh\LibreSSL\bin\desktop\$arch\libcrypto.dll $env:APPVEYOR_BUILD_FOLDER\bin\$foldername\Release\ -Force }
 
 test_script:
