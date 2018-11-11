@@ -327,5 +327,5 @@ Describe "E2E scenarios for ssh client" -Tags "CI" {
             $stderrFile | Should -FileContentMatch "test string for invalid proxy"
             #$stderrFile | Should -FileContentMatch "Connection closed by remote host"
         }
-    }    
+    }
 }
