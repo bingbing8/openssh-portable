@@ -52,15 +52,12 @@ function Set-TestCommons
             $env:path = "$Script:SSHBinaryPath;$env:path"
         }
 
-        write-host $Script:SSHBinaryPath
-        write-host (Test-path "$Script:SSHBinaryPath\libcrypto-41.dll")
-
         if(-not (Test-Path $Script:TestDirectory))
         {
             New-Item $Script:TestDirectory -ItemType directory -Force -ErrorAction SilentlyContinue | Out-Null
         }
         else {
-            Get-ChildItem $Script:TestDirectory | Remove-Item | Out-Null
+            Get-ChildItem $Script:TestDirectory | Remove-Item -Recurse | Out-Null
         }
         $host_key_files = @()
         $host_key_type | % {
@@ -81,7 +78,7 @@ function Set-TestCommons
         #& "$binpath\ssh-keyscan.exe" -p $port $server 1> $known_host_file 2> "error.txt"
         $host_key_files | % {
             $hk = (Get-content "$_.pub") -split ' '
-            "[$server]:$port $hk[0] $hk[1]" | Add-Content $known_host_file
+            "[$server]:$port $($hk[0]) $($hk[1])" | Add-Content $known_host_file
         }        
 
         Write-SSHConfig -Target $target -HostName $server -Port $port -IdentityFile $user_key_file -UserKnownHostsFile $known_host_file -SSH_Config_Path $ssh_config_file
@@ -96,7 +93,10 @@ function Start-SSHDDaemon
     $existingProcesseIDs = @()
     if(($existingProcesses = Get-Process -name sshd -ErrorAction SilentlyContinue)){
         $existingProcesseIDs = $existingProcesses.id
-    }    
+    }
+
+    #suppress the firewall blocking dialogue on win7
+    #netsh advfirewall firewall add rule name="sshd" program="$Script:SSHBinaryPath\sshd.exe" protocol=any action=allow dir=in
     
     Start-process -FilePath "$($Script:SSHBinaryPath)\sshd.exe" -ArgumentList "-f $SSHD_Config_Path" -NoNewWindow
     

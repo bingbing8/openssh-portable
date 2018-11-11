@@ -1,17 +1,19 @@
 ﻿If ($PSVersiontable.PSVersion.Major -le 2) {$PSScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path}
-Import-Module $PSScriptRoot\CommonUtils.psm1 -Force
 #covered -i -p -q -r -v -c -S -C
 #todo: -F, -l and -P should be tested over the network
 $tI = 0
 $suite = "SCP"
+$testDir = "$env:temp\$suite"
+. $PSScriptRoot\common.ps1 -suite $suite -TestDir $testDir
 Describe "Tests for scp command" -Tags "CI" {
     BeforeAll {
-        if($OpenSSHTestInfo -eq $null)
-        {
-            Throw "`$OpenSSHTestInfo is null. Please run Set-OpenSSHTestEnvironment to set test environments."
-        }
+        $port = 47002
+        $server = "localhost"
+        $ssh_config_file = "$testDir\ssh_config"
+        
+        #other default vars: -TargetName "test_target" -host_key_type "ed25519" -user_key_type "ed25519" -user_key_file "$testDir\user_key_$user_key_type" -known_host_file "$testDir\known_hosts"
+        Set-TestCommons -port $port -Server $server -ssh_config_file $ssh_config_file
 
-        $testDir = "$($OpenSSHTestInfo["TestDataPath"])\$suite"
         $fileName1 = "test.txt"
         $fileName2 = "test2.txt"
         $fileName3 = "test3.txt"
@@ -22,24 +24,20 @@ Describe "Tests for scp command" -Tags "CI" {
         $SourceFilePath = Join-Path $SourceDir $fileName1
         $SourceFilePath3 = Join-Path $SourceDir $fileName3
         $SourceFileWildCardFile1 = Join-Path $SourceDir $wildcardFileName1
-        $DestinationDir = Join-Path "$($OpenSSHTestInfo["TestDataPath"])\SCP" "DestDir"
-        $DestinationDirWildcardPath = Join-Path "$($OpenSSHTestInfo["TestDataPath"])\SCP" "DestD?r"
+        $DestinationDir = Join-Path "$testDir" "DestDir"
+        $DestinationDirWildcardPath = Join-Path "$testDir" "DestD?r"
         $DestinationFilePath = Join-Path $DestinationDir $fileName1        
         $NestedSourceDir= Join-Path $SourceDir "nested"
         $NestedSourceFilePath = Join-Path $NestedSourceDir $fileName2
-        $null = New-Item $SourceDir -ItemType directory -Force -ErrorAction SilentlyContinue
-        $null = New-Item $NestedSourceDir -ItemType directory -Force -ErrorAction SilentlyContinue
-        $null = New-item -path $SourceFilePath -ItemType file -force -ErrorAction SilentlyContinue
-        $null = New-item -path $NestedSourceFilePath -ItemType file -force -ErrorAction SilentlyContinue
+        New-Item $SourceDir -ItemType directory -Force -ErrorAction SilentlyContinue | Out-Null
+        New-Item $NestedSourceDir -ItemType directory -Force -ErrorAction SilentlyContinue | Out-Null
+        New-item -path $SourceFilePath -ItemType file -force -ErrorAction SilentlyContinue | Out-Null
+        New-item -path $NestedSourceFilePath -ItemType file -force -ErrorAction SilentlyContinue | Out-Null
         "Test content111" | Set-content -Path $SourceFilePath
         "Test content333" | Set-content -Path $SourceFilePath3
         "Test content in nested dir" | Set-content -Path $NestedSourceFilePath
-        $null = New-Item $DestinationDir -ItemType directory -Force -ErrorAction SilentlyContinue
-        $sshcmd = (get-command ssh).Path        
-
-        $server = $OpenSSHTestInfo["Target"]
-        $port = $OpenSSHTestInfo["Port"]
-        $ssouser = $OpenSSHTestInfo["SSOUser"]
+        New-Item $DestinationDir -ItemType directory -Force -ErrorAction SilentlyContinue | Out-Null
+        $sshcmd = (get-command ssh).Path
 
         $testData = @(
             @{
@@ -51,13 +49,13 @@ Describe "Tests for scp command" -Tags "CI" {
                 Title = 'Simple copy local file to remote file'
                 Source = $SourceFilePath
                 Destination = "test_target:$DestinationFilePath"
-                Options = "-S `"$sshcmd`""
+                Options = "-S `"$sshcmd`" -F $ssh_config_file"
             },
             @{
                 Title = 'Simple copy remote file to local file'
                 Source = "test_target:$SourceFilePath"
                 Destination = $DestinationFilePath
-                Options = "-p -c aes128-ctr -C"
+                Options = "-p -c aes128-ctr -C -F $ssh_config_file"
             },            
             @{
                 Title = 'Simple copy local file to local dir'
@@ -68,12 +66,13 @@ Describe "Tests for scp command" -Tags "CI" {
                 Title = 'simple copy local file to remote dir'         
                 Source = $SourceFilePath
                 Destination = "test_target:$DestinationDir"
-                Options = "-C -q"
+                Options = "-C -q -F $ssh_config_file"
             },
             @{
                 Title = 'simple copy remote file to local dir'
                 Source = "test_target:$SourceFilePath"
                 Destination = $DestinationDir
+                Options = "-F $ssh_config_file"
             },
             @{
                 Title = 'Simple copy local file with wild card name to local dir'
@@ -84,12 +83,13 @@ Describe "Tests for scp command" -Tags "CI" {
                 Title = 'simple copy remote file with wild card name to local dir'
                 Source = "test_target:$SourceFileWildCardFile1"
                 Destination = $DestinationDir
+                Options = "-F $ssh_config_file"
             },
             @{
                 Title = 'simple copy local file to remote dir with wild card name'         
                 Source = $SourceFilePath
                 Destination = "test_target:$DestinationFilePath"
-                Options = "-C -q"
+                Options = "-C -q -F $ssh_config_file"
             }
         )
 
@@ -98,7 +98,7 @@ Describe "Tests for scp command" -Tags "CI" {
                 Title = 'copy from local dir to remote dir'
                 Source = $sourceDir
                 Destination = "test_target:$DestinationDir"
-                Options = "-r -p -c aes128-ctr"
+                Options = "-r -p -c aes128-ctr -F $ssh_config_file"
             },
             @{
                 Title = 'copy from local dir to local dir'
@@ -110,61 +110,27 @@ Describe "Tests for scp command" -Tags "CI" {
                 Title = 'copy from remote dir to local dir'            
                 Source = "test_target:$sourceDir"
                 Destination = $DestinationDir
-                Options = "-C -r -q"
+                Options = "-C -r -q -F $ssh_config_file"
             }
         )
-
-        # for the first time, delete the existing log files.
-        if ($OpenSSHTestInfo['DebugMode'])
-        {
-            Clear-Content "$env:ProgramData\ssh\logs\ssh-agent.log" -Force -ErrorAction SilentlyContinue
-            Clear-Content "$env:ProgramData\ssh\logs\sshd.log" -Force -ErrorAction SilentlyContinue
-        }
-
-        function CheckTarget {
-            param([string]$target)
-            if(-not (Test-path $target))
-            {
-                if( $OpenSSHTestInfo["DebugMode"])
-                {
-                    Copy-Item "$env:ProgramData\ssh\logs\ssh-agent.log" "$testDir\failedagent$tI.log" -Force -ErrorAction SilentlyContinue
-                    Copy-Item "$env:ProgramData\ssh\logs\sshd.log" "$testDir\failedsshd$tI.log" -Force -ErrorAction SilentlyContinue
-                    
-                    # clear the ssh-agent, sshd logs so that next testcase will get fresh logs.
-                    Clear-Content "$env:ProgramData\ssh\logs\ssh-agent.log" -Force -ErrorAction SilentlyContinue
-                    Clear-Content "$env:ProgramData\ssh\logs\sshd.log" -Force -ErrorAction SilentlyContinue
-                }
-             
-                return $false
-            }
-            return $true
-        }
     }
     AfterAll {
-
-        if($OpenSSHTestInfo -eq $null)
+        if((-not [string]::IsNullOrEmpty($SourceDir)) -and (Test-Path $SourceDir -PathType Container))
         {
-            #do nothing
+            Get-Item $SourceDir | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
         }
-        elseif( -not $OpenSSHTestInfo['DebugMode'])
+        if(-not [string]::IsNullOrEmpty($DestinationDir)-and (Test-Path $DestinationDir -PathType Container))
         {
-            if(-not [string]::IsNullOrEmpty($SourceDir))
-            {
-                Get-Item $SourceDir | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
-            }
-            if(-not [string]::IsNullOrEmpty($DestinationDir))
-            {
-                Get-Item $DestinationDir | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
-            }
+            Get-Item $DestinationDir | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
 
     BeforeAll {
-        $null = New-Item $DestinationDir -ItemType directory -Force -ErrorAction SilentlyContinue
+        New-Item $DestinationDir -ItemType directory -Force -ErrorAction SilentlyContinue | Out-Null
     }
 
     AfterEach {
-        Get-ChildItem $DestinationDir -Recurse | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+        Get-ChildItem $DestinationDir -Recurse | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue | Out-Null
         Start-Sleep 1
         $tI++
     }       
@@ -176,7 +142,7 @@ Describe "Tests for scp command" -Tags "CI" {
         iex  "scp $Options $Source $Destination"
         $LASTEXITCODE | Should Be 0
         #validate file content. DestPath is the path to the file.
-        CheckTarget -target $DestinationFilePath | Should Be $true
+        Test-Path $DestinationFilePath -PathType leaf | Should -Be $true
 
         $equal = @(Compare-Object (Get-ChildItem -path $SourceFilePath) (Get-ChildItem -path $DestinationFilePath) -Property Name, Length ).Length -eq 0
         $equal | Should Be $true
@@ -193,7 +159,7 @@ Describe "Tests for scp command" -Tags "CI" {
             
         iex  "scp $Options $Source $Destination"
         $LASTEXITCODE | Should Be 0
-        CheckTarget -target (join-path $DestinationDir $SourceDirName) | Should Be $true
+        Test-Path (join-path $DestinationDir $SourceDirName) -PathType Container | Should -Be $true
 
         $equal = @(Compare-Object (Get-Item -path $SourceDir ) (Get-Item -path (join-path $DestinationDir $SourceDirName) ) -Property Name, Length).Length -eq 0        
         $equal | Should Be $true
@@ -207,7 +173,7 @@ Describe "Tests for scp command" -Tags "CI" {
         $equal = @(Compare-Object (Get-ChildItem -Recurse -path $SourceDir) (Get-ChildItem -Recurse -path (join-path $DestinationDir $SourceDirName) ) -Property Name, Length).Length -eq 0
         $equal | Should Be $true
 
-        if($Options.contains("-p ") -and ($platform -eq [PlatformType]::Windows) -and ($PSVersionTable.PSVersion.Major -gt 2))
+        if($Options.contains("-p ") -and ($PSVersionTable.PSVersion.Major -gt 2))
         {
             $equal = @(Compare-Object (Get-ChildItem -Recurse -path $SourceDir).LastWriteTime.DateTime (Get-ChildItem -Recurse -path (join-path $DestinationDir $SourceDirName) ).LastWriteTime.DateTime).Length -eq 0            
             $equal | Should Be $true
@@ -219,8 +185,8 @@ Describe "Tests for scp command" -Tags "CI" {
         scp -p $Source $DestinationDir
         $LASTEXITCODE | Should Be 0
         #validate file content. DestPath is the path to the file.
-        CheckTarget -target $DestinationFilePath | Should Be $true
-        CheckTarget -target (Join-path $DestinationDir $fileName3) | Should Be $true
+        Test-Path $DestinationFilePath -PathType Leaf| Should -Be $true
+        Test-Path (Join-path $DestinationDir $fileName3) | Should -Be $true
 
         $equal = @(Compare-Object (Get-ChildItem -path $Source) (Get-ChildItem -path (join-path $DestinationDir $wildcardFileName2)) -Property Name, Length ).Length -eq 0
         $equal | Should Be $true

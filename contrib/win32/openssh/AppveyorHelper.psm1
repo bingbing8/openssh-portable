@@ -226,7 +226,7 @@ function Invoke-OpenSSHE2ETests
     Write-BuildMessage -Message "Running OpenSSH tests..." -Category Information
     Push-Location "$env:APPVEYOR_BUILD_FOLDER\regress\pesterTests"
     #only ssh tests for now
-    $testList = "$env:APPVEYOR_BUILD_FOLDER\regress\pesterTests\SSH.Tests.ps1"
+    $testList = @("$env:APPVEYOR_BUILD_FOLDER\regress\pesterTests\SSH.Tests.ps1","$env:APPVEYOR_BUILD_FOLDER\regress\pesterTests\SCP.Tests.ps1")
     
     Invoke-Pester $testList -OutputFormat NUnitXml -OutputFile $Script:E2EResult -Tag 'CI' -PassThru
     Pop-Location
