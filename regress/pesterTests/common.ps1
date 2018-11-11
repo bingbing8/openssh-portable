@@ -90,7 +90,6 @@ function Start-SSHDDaemon
     [string]$SSHD_Config_Path = "$Script:TestDirectory\sshd_config")    
     
     $Script:newProcess = $null
-    $existingProcesseIDs = @()
     if(($existingProcesses = Get-Process -name sshd -ErrorAction SilentlyContinue)){
         $existingProcesseIDs | Stop-Process
     }

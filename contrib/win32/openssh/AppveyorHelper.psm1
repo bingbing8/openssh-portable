@@ -167,7 +167,7 @@ function Add-Artifact
         [ValidateNotNull()]
         [System.Collections.ArrayList] $artifacts,
         [string] $FileToAdd
-    )        
+    )
     
     if ([string]::IsNullOrEmpty($FileToAdd) -or (-not (Test-Path $FileToAdd -PathType Leaf)) )
     {            
@@ -268,9 +268,9 @@ function Get-UnitTestDirectory
     else
     {
         $NativeHostArch = "x64"
-    }  
+    }
     
-    $unitTestdir = Join-Path $env:APPVEYOR_BUILD_FOLDER -ChildPath "bin\$NativeHostArch\$Configuration"
+    $unitTestdir = (Resolve-Path "$psscriptroot\..\..\..\bin\$NativeHostArch\$Configuration").Path
     $unitTestDir
 }
 
@@ -289,12 +289,11 @@ function Invoke-OpenSSHUnitTests
 
     if ($testFolders -ne $null)
     {
-        $testFolders | % {            
+        $testFolders | % {
             $unittestFile = "$(Split-Path $_ -Leaf).exe"
             $unittestFilePath = join-path $_ $unittestFile
             if(Test-Path $unittestFilePath -pathtype leaf)
-            {
-                Push-Location $_
+            {                
                 $pinfo = New-Object System.Diagnostics.ProcessStartInfo
                 $pinfo.FileName = "$unittestFilePath"
                 $pinfo.RedirectStandardError = $true
@@ -319,16 +318,15 @@ function Invoke-OpenSSHUnitTests
                 }
                 if ($errorCode -ne 0)
                 {
-                    $errorMessage = "$unittestFile failed.`nExitCode: $errorCode. Detail test log is at $Script:UnitTestResult."
-                    Write-BuildMessage -Message $errorMessage  -Category Warning
-                    Write-Host "$unittestFile failed-ExitCode: $errorCode."
-                    Set-BuildVariable TestPassed False
+                    $errorMessage = "$unittestFile failed.`nExitCode: $errorCode."
+                    Write-BuildMessage -Message $errorMessage -Category Error
+                    Write-Host $errorMessage
+                    Set-BuildVariable TestPassed False                   
                 }
                 else
                 {
                     Write-Host "$unittestFile passed!"
                 }
-                Pop-Location
             }
         }
     }
