@@ -289,11 +289,12 @@ function Invoke-OpenSSHUnitTests
 
     if ($testFolders -ne $null)
     {
-        $testFolders | % {
+        $testFolders | % {            
             $unittestFile = "$(Split-Path $_ -Leaf).exe"
             $unittestFilePath = join-path $_ $unittestFile
             if(Test-Path $unittestFilePath -pathtype leaf)
-            {                
+            {
+                Push-Location $_
                 $pinfo = New-Object System.Diagnostics.ProcessStartInfo
                 $pinfo.FileName = "$unittestFilePath"
                 $pinfo.RedirectStandardError = $true
@@ -327,6 +328,7 @@ function Invoke-OpenSSHUnitTests
                 {
                     Write-Host "$unittestFile passed!"
                 }
+                Pop-Location
             }
         }
     }

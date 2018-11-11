@@ -50,7 +50,7 @@ function Set-TestCommons
 
         if(-not $env:path.tolower().startswith($Script:SSHBinaryPath.tolower())){
             $env:path = "$Script:SSHBinaryPath;$env:path"
-        }
+        }        
 
         if(-not (Test-Path $Script:TestDirectory))
         {
@@ -92,7 +92,7 @@ function Start-SSHDDaemon
     $Script:newProcess = $null
     $existingProcesseIDs = @()
     if(($existingProcesses = Get-Process -name sshd -ErrorAction SilentlyContinue)){
-        $existingProcesseIDs = $existingProcesses.id
+        $existingProcesseIDs | Stop-Process
     }
 
     #suppress the firewall blocking dialogue on win7
@@ -104,7 +104,7 @@ function Start-SSHDDaemon
     $num = 0
     do
     {
-        $Script:newProcess = Get-Process -name sshd -ErrorAction SilentlyContinue | Where-Object {$_.id -notin $existingProcesseIDs}
+        $Script:newProcess = Get-Process -name sshd -ErrorAction SilentlyContinue
         start-sleep 1
         $num++
         if($num -gt 30) { break }
@@ -116,7 +116,7 @@ function Clear-TestCommons
     Stop-SSHDDaemon
     if($env:path.tolower().startswith($Script:SSHBinaryPath.tolower())){
         $env:path = $env:path.replace("$Script:SSHBinaryPath.tolower();", "")
-    }        
+    }
 }
 
 function Stop-SSHDDaemon

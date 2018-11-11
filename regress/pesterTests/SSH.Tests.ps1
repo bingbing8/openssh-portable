@@ -65,7 +65,6 @@ Describe "E2E scenarios for ssh client" -Tags "CI" {
 
         It "$tC.$tI - test version" {
             iex "cmd /c `"ssh -V 2> $stderrFile`""
-            Get-Content $stderrFile | write-host
             $stderrFile | Should -FileContentMatch "OpenSSH_for_Windows *"
         }
 
@@ -75,8 +74,7 @@ Describe "E2E scenarios for ssh client" -Tags "CI" {
         }
         
         It "$tC.$tI - remote echo command" {
-            1 | should Be 1
-            #iex "$sshDefaultCmd echo 1234" | Should Be "1234"
+            iex "ssh -F $ssh_config_file test_target echo 1234" | Should Be "1234"
         }
 
     }

@@ -186,7 +186,7 @@ Describe "Tests for scp command" -Tags "CI" {
         $LASTEXITCODE | Should Be 0
         #validate file content. DestPath is the path to the file.
         Test-Path $DestinationFilePath -PathType Leaf| Should -Be $true
-        Test-Path (Join-path $DestinationDir $fileName3) | Should -Be $true
+        Test-Path (Join-path $DestinationDir $fileName3) -pathType leaf | Should -Be $true
 
         $equal = @(Compare-Object (Get-ChildItem -path $Source) (Get-ChildItem -path (join-path $DestinationDir $wildcardFileName2)) -Property Name, Length ).Length -eq 0
         $equal | Should Be $true
