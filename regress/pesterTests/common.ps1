@@ -19,8 +19,9 @@ function Find-OpenSSHBinPath
     {
         $NativeHostArch = "x64"
     }    
+    Get-ChildItem (join-path "$psscriptroot\..\..\bin\$NativeHostArch" "$Configuration\sshd.exe")
 
-    $sshdPath = Resolve-Path (join-path "..\..\bin\$NativeHostArch" "$Configuration\sshd.exe") -ErrorAction Ignore
+    $sshdPath = Resolve-Path (join-path "$psscriptroot\..\..\bin\$NativeHostArch" "$Configuration\sshd.exe") -ErrorAction Ignore
     if($sshdPath -eq $null)
     {
         $sshdPath = get-command sshd.exe -ErrorAction SilentlyContinue 
