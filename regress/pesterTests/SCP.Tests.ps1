@@ -191,7 +191,7 @@ Describe "Tests for scp command" -Tags "CI" {
         $equal = @(Compare-Object (Get-ChildItem -path $Source) (Get-ChildItem -path (join-path $DestinationDir $wildcardFileName2)) -Property Name, Length ).Length -eq 0
         $equal | Should Be $true
         
-        $equal = @(Compare-Object (Get-ChildItem -path $Source).LastWriteTime.DateTime (Get-ChildItem -path (join-path $DestinationDir $wildcardFileName3)).LastWriteTime.DateTime ).Length -eq 0
+        $equal = @(Compare-Object (Get-ChildItem -path $Source).LastWriteTime.DateTime (Get-ChildItem -path (join-path $DestinationDir $wildcardFileName2)).LastWriteTime.DateTime ).Length -eq 0
         $equal | Should Be $true        
     }
 }   

@@ -320,6 +320,7 @@ function Invoke-OpenSSHUnitTests
                 {
                     $errorMessage = "$unittestFile failed.`nExitCode: $errorCode. Detail test log is at $Script:UnitTestResult."
                     Write-BuildMessage -Message $errorMessage  -Category Warning
+                    Write-Host "$unittestFile failed-ExitCode: $errorCode."
                     Set-BuildVariable TestPassed False
                 }
                 else
