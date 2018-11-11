@@ -276,8 +276,12 @@ function Get-UnitTestDirectory
 
 function Invoke-OpenSSHUnitTests
 {
-    $unittestdir = Get-UnitTestDirectory
-    Push-Location $unittestdir
+    $bindir = Get-UnitTestDirectory
+    if(-not $env:path.tolower().startswith($bindir.tolower())){
+        $env:path = "$bindir;$env:path"
+    }
+    
+    Push-Location $bindir
     Write-BuildMessage -Message "Running OpenSSH unit tests..." -Category Information
     if (Test-Path $Script:UnitTestResult)
     {
