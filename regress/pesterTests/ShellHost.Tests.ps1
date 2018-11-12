@@ -3,12 +3,6 @@ $tI = 0
 $suite = "shellhost"
 
 Describe "E2E scenarios for ssh-shellhost" -Tags "CI" {
-    BeforeAll {
-    }
-
-    BeforeEach {
-    }        
-
     AfterEach {$tI++;}
 
     Context "$tC - shellhost commandline scenarios"  {

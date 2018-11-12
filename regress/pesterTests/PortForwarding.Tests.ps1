@@ -1,23 +1,20 @@
 ﻿If ($PSVersiontable.PSVersion.Major -le 2) {$PSScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path}
-Import-Module $PSScriptRoot\CommonUtils.psm1 -Force
 $tC = 1
 $tI = 0
 $suite = "portfwd"
-
+$testDir = "$env:temp\$suite"
+. $PSScriptRoot\common.ps1 -suite $suite -TestDir $testDir
 Describe "E2E scenarios for port forwarding" -Tags "CI" {
     BeforeAll {
-        if($OpenSSHTestInfo -eq $null)
-        {
-            Throw "`$OpenSSHTestInfo is null. Please run Set-OpenSSHTestEnvironment to set test environments."
-        }
-        $testDir = Join-Path $OpenSSHTestInfo["TestDataPath"] $suite
-        if(-not (Test-Path $testDir))
-        {
-            $null = New-Item $testDir -ItemType directory -Force -ErrorAction SilentlyContinue
-        }
-        $platform = Get-Platform
+        $port = 47002
+        $server = "localhost"
+        $ssh_config_file = "$testDir\ssh_config"
+
         #skip on ps 2 becase non-interactive cmd require a ENTER before it returns on ps2
-        $skip = ($platform -eq [PlatformType]::Windows) -and ($PSVersionTable.PSVersion.Major -le 2)
+        $skip = $PSVersionTable.PSVersion.Major -le 2
+
+        #other default vars: -TargetName "test_target" -host_key_type "ed25519" -user_key_type "ed25519" -user_key_file "$testDir\user_key_$user_key_type" -known_host_file "$testDir\known_hosts"
+        Set-TestCommons -port $port -Server $server -ssh_config_file $ssh_config_file
     }
 
     BeforeEach {
@@ -33,13 +30,13 @@ Describe "E2E scenarios for port forwarding" -Tags "CI" {
 
         #TODO - this relies on winrm (that is windows specific)
         It "$tC.$tI - local port forwarding" -skip:$skip {
-            ssh -L 5432:127.0.0.1:47001 test_target powershell.exe Test-WSMan -computer 127.0.0.1 -port 5432 | Set-Content $stdoutFile
-            $stdoutFile | Should Contain "wsmid"
+            ssh -F $ssh_config_file -L 5432:127.0.0.1:47001 test_target powershell.exe Test-WSMan -computer 127.0.0.1 -port 5432 | Set-Content $stdoutFile
+            $stdoutFile | Should  -FileContentMatch "wsmid"
         }
 
         It "$tC.$tI - remote port forwarding" -skip:$skip {
-            ssh -R 5432:127.0.0.1:47001 test_target powershell.exe Test-WSMan -computer 127.0.0.1 -port 5432  | Set-Content $stdoutFile
-            $stdoutFile | Should Contain "wsmid"
+            ssh -F $ssh_config_file -R 5432:127.0.0.1:47001 test_target powershell.exe Test-WSMan -computer 127.0.0.1 -port 5432  | Set-Content $stdoutFile
+            $stdoutFile | Should  -FileContentMatch "wsmid"
         }
     }        
 }

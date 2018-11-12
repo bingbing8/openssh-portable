@@ -148,7 +148,8 @@ function Install-Pester
     $isModuleAvailable = Get-Module 'Pester' -ListAvailable
     if (-not ($isModuleAvailable))
     {
-        choco install Pester -y --force --limitoutput
+        Write-BuildMessage -Message "Installing Pester..." -Category Information
+        choco install Pester -y --force --limitoutput 2>&1 >> $env:temp\pesterInstallLog.txt
     }
 }
 
@@ -226,7 +227,10 @@ function Invoke-OpenSSHE2ETests
     Write-BuildMessage -Message "Running OpenSSH tests..." -Category Information
     Push-Location "$env:APPVEYOR_BUILD_FOLDER\regress\pesterTests"
     #only ssh tests for now
-    $testList = @("$env:APPVEYOR_BUILD_FOLDER\regress\pesterTests\SSH.Tests.ps1","$env:APPVEYOR_BUILD_FOLDER\regress\pesterTests\SCP.Tests.ps1")
+    $testList = @("$env:APPVEYOR_BUILD_FOLDER\regress\pesterTests\SSH.Tests.ps1",
+                "$env:APPVEYOR_BUILD_FOLDER\regress\pesterTests\SCP.Tests.ps1",
+                "$env:APPVEYOR_BUILD_FOLDER\regress\pesterTests\PortForwarding.Tests.ps1",
+                "$env:APPVEYOR_BUILD_FOLDER\regress\pesterTests\ShellHost.Tests.ps1")
     
     Invoke-Pester $testList -OutputFormat NUnitXml -OutputFile $Script:E2EResult -Tag 'CI' -PassThru
     Pop-Location

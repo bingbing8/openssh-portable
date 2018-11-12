@@ -5,6 +5,8 @@ $Script:newProcess = $null
 $Script:SSHBinaryPath = ""
 $Script:TestDirectory = $TestDir
 $Script:TestSuite = $Suite
+$Script:SSH_Config_file = "$Script:TestDirectory\ssh_config"
+$Script:Known_host_file = $null
 
 function Find-OpenSSHBinPath
 {
@@ -44,9 +46,7 @@ function Set-TestCommons
         [string[]]$host_key_type = "ed25519",
         [string]$user_key_type = "ed25519",
         [string]$user_key_file = "$Script:TestDirectory\user_key_$user_key_type",
-        [string]$known_host_file = "$Script:TestDirectory\known_hosts",
-        [string]$server = "localhost",
-        [string]$ssh_config_file = "$Script:TestDirectory\ssh_config")
+        [string]$server = "localhost")
 
         if(-not $env:path.tolower().startswith($Script:SSHBinaryPath.tolower())){
             $env:path = "$Script:SSHBinaryPath;$env:path"
@@ -73,15 +73,16 @@ function Set-TestCommons
 
         Write-SSHDConfig -Port $port -Host_Key_Files $host_key_files -Authorized_Keys_File $authorized_keys_file -SSHD_Config_Path "$Script:TestDirectory\sshd_config"
         Start-SSHDDaemon -SSHD_Config_Path "$Script:TestDirectory\sshd_config"
-
         #generate known hosts
+        
+        $Script:Known_host_file = "$Script:TestDirectory\known_hosts"
         #& "$binpath\ssh-keyscan.exe" -p $port $server 1> $known_host_file 2> "error.txt"
         $host_key_files | % {
             $hk = (Get-content "$_.pub") -split ' '
-            "[$server]:$port $($hk[0]) $($hk[1])" | Add-Content $known_host_file
+            "[$server]:$port $($hk[0]) $($hk[1])" | Add-Content $Script:Known_host_file
         }        
 
-        Write-SSHConfig -Target $target -HostName $server -Port $port -IdentityFile $user_key_file -UserKnownHostsFile $known_host_file -SSH_Config_Path $ssh_config_file
+        Write-SSHConfig -Target $target -HostName $server -Port $port -IdentityFile $user_key_file -UserKnownHostsFile $Script:Known_host_file -SSH_Config_Path $ssh_config_file
 }
 
 function Start-SSHDDaemon
@@ -91,7 +92,7 @@ function Start-SSHDDaemon
     
     $Script:newProcess = $null
     if(($existingProcesses = Get-Process -name sshd -ErrorAction SilentlyContinue)){
-        $existingProcesseIDs | Stop-Process
+        $existingProcesses | Stop-Process
     }
 
     #suppress the firewall blocking dialogue on win7
