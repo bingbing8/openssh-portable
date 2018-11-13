@@ -265,10 +265,8 @@ Describe "SFTP Test Cases" -Tags "CI" {
        $str = $ExecutionContext.InvokeCommand.ExpandString("sftp -F $ssh_config -b $batchFilePath test_target > $outputFilePath")
        iex $str
        $content = Get-Content $outputFilePath
-       Write-host $content
        #cleanup
        $HasAccessPattern = $permTestHasAccessFilePath.Replace("\", "[/\\]")
-       Write-host $content
        $matches = @($content | select-string -Pattern "^/$HasAccessPattern\s{0,}$")
        $matches.count | Should be 1
 
