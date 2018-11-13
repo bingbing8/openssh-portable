@@ -1,6 +1,7 @@
 ﻿$ErrorActionPreference = 'Stop'
 Set-StrictMode -Version 2.0
 If ($PSVersiontable.PSVersion.Major -le 2) {$PSScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path}
+Import-Module $PSScriptRoot\OpenSSHBuildHelper.psm1 -Force
 
 $script:messageFile = join-path $env:temp "BuildMessage.log"
 $Script:TestResultsDir = "$env:temp\OpenSSHTestResults\"
@@ -231,7 +232,8 @@ function Invoke-OpenSSHE2ETests
                 "$env:APPVEYOR_BUILD_FOLDER\regress\pesterTests\PortForwarding.Tests.ps1",
                 "$env:APPVEYOR_BUILD_FOLDER\regress\pesterTests\ShellHost.Tests.ps1",
                 "$env:APPVEYOR_BUILD_FOLDER\regress\pesterTests\KeyUtils.Tests.ps1",
-                "$env:APPVEYOR_BUILD_FOLDER\regress\pesterTests\SFTP.Tests.ps1")
+                "$env:APPVEYOR_BUILD_FOLDER\regress\pesterTests\SFTP.Tests.ps1",
+                "$env:APPVEYOR_BUILD_FOLDER\regress\pesterTests\Authorized_keys_fileperm.Tests.ps1")
     
     Invoke-Pester $testList -OutputFormat NUnitXml -OutputFile $Script:E2EResult -Tag 'CI' -PassThru
     Pop-Location

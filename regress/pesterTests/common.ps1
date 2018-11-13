@@ -6,6 +6,7 @@ $Script:SSHBinaryPath = ""
 $Script:TestDirectory = $TestDir
 $Script:TestSuite = $Suite
 $Script:SSH_Config_file = "$Script:TestDirectory\ssh_config"
+$Script:Authorized_keys_file = $null
 $Script:Known_host_file = $null
 
 function Find-OpenSSHBinPath
@@ -57,10 +58,10 @@ function Set-TestCommons
    
         ssh-keygen.exe -t $user_key_type -P "`"`"" -f $user_key_file
 
-        $authorized_keys_file = "$Script:TestDirectory\Authorized_Keys"
-        copy-item "$user_key_file.pub" $authorized_keys_file -force
+        $Script:Authorized_keys_file = "$Script:TestDirectory\Authorized_Keys"
+        copy-item "$user_key_file.pub" $Script:Authorized_keys_file -force
 
-        Write-SSHDConfig -Port $port -Host_Key_Files $host_key_files -Authorized_Keys_File $authorized_keys_file -SSHD_Config_Path "$Script:TestDirectory\sshd_config"
+        Write-SSHDConfig -Port $port -Host_Key_Files $host_key_files -Authorized_Keys_File $Script:Authorized_keys_file -SSHD_Config_Path "$Script:TestDirectory\sshd_config"
         Start-SSHDDaemon -SSHD_Config_Path "$Script:TestDirectory\sshd_config"
 
         #generate known hosts
