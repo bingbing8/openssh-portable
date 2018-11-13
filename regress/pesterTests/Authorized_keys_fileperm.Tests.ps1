@@ -23,22 +23,12 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
         #$PwdUser = $OpenSSHTestInfo["PasswdUser"]
         #$ssouserProfile = $OpenSSHTestInfo["SSOUserProfile"]        
         Remove-Item -Path (Join-Path $testDir "*$sshLogName") -Force -ErrorAction SilentlyContinue
-                
-        if([Environment]::OSVersion.Version.Major -le 6)
-        {
-            #suppress the firewall blocking dialogue on win7
-            netsh advfirewall firewall add rule name="sshd" program="$($OpenSSHTestInfo['OpenSSHBinPath'])\sshd.exe" protocol=any action=allow dir=in
-        }        
     }
 
     AfterEach { $tI++ }
     
     AfterAll {
         Clear-TestCommons
-        if($psversiontable.BuildVersion.Major -le 6)
-        {
-            netsh advfirewall firewall delete rule name="sshd" program="$($OpenSSHTestInfo['OpenSSHBinPath'])\sshd.exe" protocol=any dir=in
-        }
     }
 
     Context "Authorized key file permission" {

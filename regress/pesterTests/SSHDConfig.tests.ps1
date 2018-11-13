@@ -119,21 +119,12 @@ Describe "Tests of sshd_config" -Tags "Scenario" {
         {
             Stop-SSHDTestDaemon
         }
-        if(($platform -eq [PlatformType]::Windows) -and ([Environment]::OSVersion.Version.Major -le 6))
-        {
-            #suppress the firewall blocking dialogue on win7
-            netsh advfirewall firewall add rule name="sshd" program="$($OpenSSHTestInfo['OpenSSHBinPath'])\sshd.exe" protocol=any action=allow dir=in
-        }
     }
 
     AfterEach { $tI++ }
     
     AfterAll {        
         $PrincipalContext.Dispose()
-        if(($platform -eq [PlatformType]::Windows) -and ($psversiontable.BuildVersion.Major -le 6))
-        {            
-            netsh advfirewall firewall delete rule name="sshd" program="$($OpenSSHTestInfo['OpenSSHBinPath'])\sshd.exe" protocol=any dir=in
-        }    
     }
 
 <#

@@ -17,13 +17,6 @@ Describe "Tests for log file permission" -Tags "CI" {
         $currentUserSid = Get-UserSID -User "$($env:USERDOMAIN)\$($env:USERNAME)"        
 
         Remove-Item (Join-Path $testDir "*$logName") -Force -ErrorAction SilentlyContinue
-        
-        if($psversiontable.BuildVersion.Major -le 6)
-        {
-            #suppress the firewall blocking dialogue on win7
-            netsh advfirewall firewall add rule name="sshd" program="$($OpenSSHTestInfo['OpenSSHBinPath'])\sshd.exe" protocol=any action=allow dir=in
-        }
-
         #only validate owner and ACEs of the file
         function ValidateLogFilePerm {
             param([string]$FilePath)
@@ -75,12 +68,6 @@ Describe "Tests for log file permission" -Tags "CI" {
     }
 
     AfterEach {$tI++;}
-    AfterAll {
-        if($psversiontable.BuildVersion.Major -le 6)
-        {            
-            netsh advfirewall firewall delete rule name="sshd" program="$($OpenSSHTestInfo['OpenSSHBinPath'])\sshd.exe" protocol=any dir=in
-        }    
-    }
 
     Context "$tC-SSHD -E Log file permission" {
         BeforeAll { $tI=1 }

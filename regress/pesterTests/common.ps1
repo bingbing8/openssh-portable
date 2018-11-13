@@ -87,6 +87,11 @@ function Start-SSHDDaemon
     #suppress the firewall blocking dialogue on win7
     #netsh advfirewall firewall add rule name="sshd" program="$Script:SSHBinaryPath\sshd.exe" protocol=any action=allow dir=in
     
+    if($psversiontable.BuildVersion.Major -le 6)
+    {
+        #suppress the firewall blocking dialogue on win7
+        netsh advfirewall firewall add rule name="sshd" program="$Script:SSHBinaryPath\sshd.exe" protocol=any action=allow dir=in
+    }
     Start-process -FilePath "$($Script:SSHBinaryPath)\sshd.exe" -ArgumentList "-f `"$SSHD_Config_Path`" $ExtraArglist" -NoNewWindow
     
     #Sleep for 1 seconds for process to ready to listen
@@ -106,14 +111,20 @@ function Clear-TestCommons
     if($env:path.tolower().startswith($Script:SSHBinaryPath.tolower())){
         $env:path = $env:path.replace("$Script:SSHBinaryPath.tolower();", "")
     }
+
 }
 
 function Stop-SSHDDaemon
-{
+{   
     if($Script:newProcess) {
         $Script:newProcess | Stop-Process -ErrorAction SilentlyContinue
-     }
-     $Script:newProcess = $null
+    }
+    $Script:newProcess = $null
+     
+    if($psversiontable.BuildVersion.Major -le 6)
+    {            
+        netsh advfirewall firewall delete rule name="sshd" program="$Script:SSHBinaryPath\sshd.exe" protocol=any dir=in
+    }
  
 }
 

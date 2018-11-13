@@ -245,7 +245,7 @@ Describe "SFTP Test Cases" -Tags "CI" {
        Test-Path $tmpDirectoryPath2 | Should be $false
     }
 
-    It "$script:testId-ls lists items the user has no read permission" {
+    It "$tI-ls lists items the user has no read permission" {
        $adminsSid = Get-UserSID -WellKnownSidType ([System.Security.Principal.WellKnownSidType]::BuiltinAdministratorsSid)                        
        $currentUserSid = Get-UserSID -User "$($env:USERDOMAIN)\$($env:USERNAME)"
             

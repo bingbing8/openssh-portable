@@ -15,20 +15,9 @@ Describe "Tests for host keys file permission" -Tags "Scenario" {
         $script:logNum = 0
         Remove-Item -Path (Join-Path $testDir "*$logName") -Force -ErrorAction SilentlyContinue
         $skip = ([Environment]::OSVersion.Version.Major -le 6) -and ([Environment]::OSVersion.Version.Minor -lt 2)
-        if($psversiontable.BuildVersion.Major -le 6)
-        {
-            #suppress the firewall blocking dialogue on win7
-            netsh advfirewall firewall add rule name="sshd" program="$($OpenSSHTestInfo['OpenSSHBinPath'])\sshd.exe" protocol=any action=allow dir=in
-        }
     }
 
     AfterEach { $tI++ }
-    AfterAll {
-        if($psversiontable.BuildVersion.Major -le 6)
-        {            
-            netsh advfirewall firewall delete rule name="sshd" program="$($OpenSSHTestInfo['OpenSSHBinPath'])\sshd.exe" protocol=any dir=in
-        }    
-    }
 
     Context "$tC - Host key files permission" {
         BeforeAll {
