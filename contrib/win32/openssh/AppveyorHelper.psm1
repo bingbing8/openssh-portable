@@ -227,9 +227,9 @@ function Invoke-OpenSSHE2ETests
     Write-BuildMessage -Message "Running OpenSSH tests..." -Category Information
     Push-Location "$env:APPVEYOR_BUILD_FOLDER\regress\pesterTests"
     #only ssh tests for now
-    $testList = @(Get-ChildItem *.tests.ps1 -Recurse | ForEach-Object{ Split-Path $_.FullName} | Sort-Object -Unique)
+    $testFolders = @(Get-ChildItem *.tests.ps1 -Recurse | ForEach-Object{ Split-Path $_.FullName} | Sort-Object -Unique)
     
-    Invoke-Pester $testList -OutputFormat NUnitXml -OutputFile $Script:E2EResult -Tag 'CI' -PassThru
+    Invoke-Pester $testFolders -OutputFormat NUnitXml -OutputFile $Script:E2EResult -Tag 'CI' -PassThru
     Pop-Location
 
     $xml = [xml](Get-Content $Script:E2EResult | out-string)

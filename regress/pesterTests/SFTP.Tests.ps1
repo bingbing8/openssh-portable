@@ -1,10 +1,9 @@
 ﻿If ($PSVersiontable.PSVersion.Major -le 2) {$PSScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path}
-Import-Module $PSScriptRoot\CommonUtils.psm1 -Force
 $tI = 0
 $suite = "sftp"
 $rootDirectory = "$env:temp\$suite"
 . $PSScriptRoot\common.ps1 -suite $suite -TestDir $rootDirectory
-Import-Module OpenSSHUtils -force
+Import-Module "$Script:SSHBinaryPath\OpenSSHUtils" -force
 Describe "SFTP Test Cases" -Tags "CI" {
     BeforeAll {
         $outputFileName = "output.txt"

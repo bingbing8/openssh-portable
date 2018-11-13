@@ -1,12 +1,11 @@
 ﻿If ($PSVersiontable.PSVersion.Major -le 2) {$PSScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path}
-Import-Module $PSScriptRoot\CommonUtils.psm1 -Force
 
 $tC = 1
 $tI = 0
 $suite = "userkey_fileperm"
 $testDir = "$env:temp\$suite"
 . $PSScriptRoot\common.ps1 -suite $suite -TestDir $testDir
-Import-Module OpenSSHUtils -force
+Import-Module "$Script:SSHBinaryPath\OpenSSHUtils" -force
 Describe "Tests for user Key file permission" -Tags "Scenario" {
     BeforeAll {
         $logName = "log.txt"

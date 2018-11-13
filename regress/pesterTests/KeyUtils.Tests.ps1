@@ -4,7 +4,7 @@ $tI = 0
 $suite = "keyutils"
 $testDir = "$env:temp\$suite"
 . $PSScriptRoot\common.ps1 -suite $suite -TestDir $testDir
-Import-Module OpenSSHUtils -force
+Import-Module "$Script:SSHBinaryPath\OpenSSHUtils" -force
 Describe "E2E scenarios for ssh key management" -Tags "CI" {
     BeforeAll {
         $keytypes = @("ed25519")
