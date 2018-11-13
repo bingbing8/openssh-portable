@@ -5,7 +5,7 @@ $suite = "authorized_keys_fileperm"
 $testDir = "$env:temp\$suite"
 . $PSScriptRoot\common.ps1 -suite $suite -TestDir $testDir
 Import-Module "$Script:SSHBinaryPath\OpenSSHUtils" -force
-Describe "Tests for authorized_keys file permission" -Tags "CI" {
+Describe "Tests for authorized_keys file permission" -Tags "Scenario" {
     BeforeAll {
         $sshLogName = "test.txt"
         $sshdLogName = "sshdlog.txt"
@@ -76,7 +76,7 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
             $o | Should Be "1234"
         }
 
-        It "$tC.$tI-authorized_keys-positive(authorized_keys is owned by admins group and pwd does not have explict ACE)" {
+        <#It "$tC.$tI-authorized_keys-positive(authorized_keys is owned by admins group and pwd does not have explict ACE)" {
             #setup to have admin group as owner and grant it full control
             Repair-FilePermission -Filepath $authorized_keys -Owner $adminsSid -FullAccessNeeded $adminsSid,$systemSid -confirm:$false
             $o = ssh  -F $ssh_config test_target echo 1234
