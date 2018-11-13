@@ -2,7 +2,7 @@
 Import-Module $PSScriptRoot\CommonUtils.psm1 -Force
 $tI = 0
 $suite = "sftp"
-$rootDirectory = "C:\Users\yawang\$suite"
+$rootDirectory = "$env:temp\$suite"
 . $PSScriptRoot\common.ps1 -suite $suite -TestDir $rootDirectory
 Import-Module OpenSSHUtils -force
 Describe "SFTP Test Cases" -Tags "CI" {

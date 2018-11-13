@@ -3,7 +3,7 @@ Import-Module $PSScriptRoot\CommonUtils.psm1 -Force
 $tC = 1
 $tI = 0
 $suite = "sshdConfig"
-Describe "Tests of sshd_config" -Tags "CI" {
+Describe "Tests of sshd_config" -Tags "Scenario" {
     BeforeAll {
         if($OpenSSHTestInfo -eq $null)
         {

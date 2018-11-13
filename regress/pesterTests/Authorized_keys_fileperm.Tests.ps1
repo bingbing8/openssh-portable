@@ -4,8 +4,9 @@ Import-Module OpenSSHUtils -Force
 $tC = 1
 $tI = 0
 $suite = "authorized_keys_fileperm"
-$testDir = "C:\Users\yawang\$suite"
+$testDir = "$env:temp\$suite"
 . $PSScriptRoot\common.ps1 -suite $suite -TestDir $testDir
+Import-Module OpenSSHUtils -force
 Describe "Tests for authorized_keys file permission" -Tags "CI" {
     BeforeAll {
         $sshLogName = "test.txt"
@@ -34,16 +35,17 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
 
     AfterEach { $tI++ }
     
-    AfterAll {        
+    AfterAll {
+        Clear-TestCommons
         if($psversiontable.BuildVersion.Major -le 6)
-        {            
+        {
             netsh advfirewall firewall delete rule name="sshd" program="$($OpenSSHTestInfo['OpenSSHBinPath'])\sshd.exe" protocol=any dir=in
-        }    
+        }
     }
 
     Context "Authorized key file permission" {
         BeforeAll {
-            function Add-PasswordSetting 
+            function Add-PasswordSetting
             {
                 param([string] $pass)
                 if (-not($env:DISPLAY)) {$env:DISPLAY = 1}
@@ -56,10 +58,10 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
                 Remove-item "env:SSH_ASKPASS" -ErrorAction SilentlyContinue
             }
             $systemSid = Get-UserSID -WellKnownSidType ([System.Security.Principal.WellKnownSidType]::LocalSystemSid)
-            $adminsSid = Get-UserSID -WellKnownSidType ([System.Security.Principal.WellKnownSidType]::BuiltinAdministratorsSid)                        
+            $adminsSid = Get-UserSID -WellKnownSidType ([System.Security.Principal.WellKnownSidType]::BuiltinAdministratorsSid)
             $currentUserSid = Get-UserSID -User "$($env:USERDOMAIN)\$($env:USERNAME)"
 
-            Repair-AuthorizedKeyPermission -Filepath $authorized_keys -confirm:$false           
+            Repair-AuthorizedKeyPermission -Filepath $authorized_keys -confirm:$false
                         
             #add wrong password so ssh does not prompt password if failed with authorized keys
             Add-PasswordSetting -Pass "WrongPass"
@@ -70,35 +72,34 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
             Repair-AuthorizedKeyPermission -Filepath $authorized_keys -confirm:$false
             Remove-PasswordSetting
             $tC++
-        }        
+        }
 
-        It "$tC.$tI-authorized_keys-positive(pwd user is the owner and running process can access to the file)" {            
-
-            #setup to have ssouser as owner and grant current user read and write, admins group, and local system full control            
+        It "$tC.$tI-authorized_keys-positive(pwd user is the owner and running process can access to the file)" {
+            #setup to have ssouser as owner and grant current user read and write, admins group, and local system full control
             Repair-FilePermission -Filepath $authorized_keys -Owners $currentUserSid -FullAccessNeeded  $adminsSid,$systemSid -confirm:$false
             $o = ssh -F $ssh_config test_target echo 1234
             $o | Should Be "1234"
         }
 
         It "$tC.$tI-authorized_keys-positive(authorized_keys is owned by local system)"  -skip:$skip {
-            #setup to have system as owner and grant it full control            
-            Repair-FilePermission -Filepath $authorized_keys -Owner $systemSid -FullAccessNeeded  $adminsSid,$systemSid,$currentUserSid -confirm:$false            
+            #setup to have system as owner and grant it full control
+            Repair-FilePermission -Filepath $authorized_keys -Owner $systemSid -FullAccessNeeded  $adminsSid,$systemSid,$currentUserSid -confirm:$false
             $o = ssh  -F $ssh_config test_target echo 1234
             $o | Should Be "1234"
         }
 
         It "$tC.$tI-authorized_keys-positive(authorized_keys is owned by admins group and pwd does not have explict ACE)" {
-            #setup to have admin group as owner and grant it full control            
+            #setup to have admin group as owner and grant it full control
             Repair-FilePermission -Filepath $authorized_keys -Owner $adminsSid -FullAccessNeeded $adminsSid,$systemSid -confirm:$false
-            $o = ssh  -F $ssh_config test_target echo 1234            
+            $o = ssh  -F $ssh_config test_target echo 1234
             $o | Should Be "1234"
         }
 
         It "$tC.$tI-authorized_keys-positive(authorized_keys is owned by admins group and pwd have explict ACE)" {
             #setup to have admin group as owner and grant it full control
             Repair-FilePermission -Filepath $authorized_keys -Owner $adminsSid -FullAccessNeeded $adminsSid,$systemSid,$currentUserSid -confirm:$false
-            $o = ssh  -F $ssh_config test_target echo 1234           
-            $o | Should Be "1234"          
+            $o = ssh  -F $ssh_config test_target echo 1234
+            $o | Should Be "1234"
         }
 
         <#It "$tC.$tI-authorized_keys-negative(authorized_keys is owned by other admin user)"  -skip:$skip {

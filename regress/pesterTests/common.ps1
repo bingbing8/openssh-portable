@@ -47,7 +47,8 @@ function Set-TestCommons
         [string[]]$host_key_type = "ed25519",
         [string]$user_key_type = "ed25519",
         [string]$user_key_file = "$Script:TestDirectory\user_key_$user_key_type",
-        [string]$server = "localhost")
+        [string]$server = "localhost",
+        [string]$ExtraArglist)
         
         $host_key_files = @()
         $host_key_type | % {
@@ -62,7 +63,7 @@ function Set-TestCommons
         copy-item "$user_key_file.pub" $Script:Authorized_keys_file -force
 
         Write-SSHDConfig -Port $port -Host_Key_Files $host_key_files -Authorized_Keys_File $Script:Authorized_keys_file -SSHD_Config_Path "$Script:TestDirectory\sshd_config"
-        Start-SSHDDaemon -SSHD_Config_Path "$Script:TestDirectory\sshd_config"
+        Start-SSHDDaemon -SSHD_Config_Path "$Script:TestDirectory\sshd_config" -ExtraArglist $ExtraArglist
 
         #generate known hosts
         $Script:Known_host_file = "$Script:TestDirectory\known_hosts"
@@ -75,7 +76,8 @@ function Set-TestCommons
 function Start-SSHDDaemon
 {
     param(
-    [string]$SSHD_Config_Path = "$Script:TestDirectory\sshd_config")    
+    [string]$SSHD_Config_Path = "$Script:TestDirectory\sshd_config",
+    [string]$ExtraArglist)    
     
     $Script:newProcess = $null
     if(($existingProcesses = Get-Process -name sshd -ErrorAction SilentlyContinue)){
@@ -85,7 +87,7 @@ function Start-SSHDDaemon
     #suppress the firewall blocking dialogue on win7
     #netsh advfirewall firewall add rule name="sshd" program="$Script:SSHBinaryPath\sshd.exe" protocol=any action=allow dir=in
     
-    Start-process -FilePath "$($Script:SSHBinaryPath)\sshd.exe" -ArgumentList "-f $SSHD_Config_Path" -NoNewWindow
+    Start-process -FilePath "$($Script:SSHBinaryPath)\sshd.exe" -ArgumentList "-f `"$SSHD_Config_Path`" $ExtraArglist" -NoNewWindow
     
     #Sleep for 1 seconds for process to ready to listen
     $num = 0

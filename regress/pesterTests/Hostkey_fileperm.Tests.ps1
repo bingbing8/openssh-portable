@@ -3,27 +3,20 @@ Import-Module $PSScriptRoot\CommonUtils.psm1 -Force
 $tC = 1
 $tI = 0
 $suite = "hostkey_fileperm"
-Describe "Tests for host keys file permission" -Tags "CI" {
-    BeforeAll {
-        if($OpenSSHTestInfo -eq $null)
-        {
-            Throw "`$OpenSSHTestInfo is null. Please run Set-OpenSSHTestEnvironment to set test environments."
-        }
-        
-        $testDir = "$($OpenSSHTestInfo["TestDataPath"])\$suite"
-        if( -not (Test-path $testDir -PathType Container))
-        {
-            $null = New-Item $testDir -ItemType directory -Force -ErrorAction SilentlyContinue
-        }
-        
+$testDir = "$env:temp\$suite"
+. $PSScriptRoot\common.ps1 -suite $suite -TestDir $testDir
+Import-Module OpenSSHUtils -force
+Describe "Tests for host keys file permission" -Tags "Scenario" {
+    BeforeAll {        
         $logName = "sshdlog.txt"
-        $port = 47003
-        $ssouser = $OpenSSHTestInfo["SSOUser"]
+        $port = 47002
+        $server = "localhost"
+        $ssh_config_file = "$testDir\ssh_config"
+
         $script:logNum = 0
-        Remove-Item -Path (Join-Path $testDir "*$logName") -Force -ErrorAction SilentlyContinue        
-        $platform = Get-Platform
-        $skip = ($platform -eq [PlatformType]::Windows) -and ([Environment]::OSVersion.Version.Major -le 6) -and ([Environment]::OSVersion.Version.Minor -lt 2)
-        if(($platform -eq [PlatformType]::Windows) -and ($psversiontable.BuildVersion.Major -le 6))
+        Remove-Item -Path (Join-Path $testDir "*$logName") -Force -ErrorAction SilentlyContinue
+        $skip = ([Environment]::OSVersion.Version.Major -le 6) -and ([Environment]::OSVersion.Version.Minor -lt 2)
+        if($psversiontable.BuildVersion.Major -le 6)
         {
             #suppress the firewall blocking dialogue on win7
             netsh advfirewall firewall add rule name="sshd" program="$($OpenSSHTestInfo['OpenSSHBinPath'])\sshd.exe" protocol=any action=allow dir=in
@@ -32,7 +25,7 @@ Describe "Tests for host keys file permission" -Tags "CI" {
 
     AfterEach { $tI++ }
     AfterAll {
-        if(($platform -eq [PlatformType]::Windows) -and ($psversiontable.BuildVersion.Major -le 6))
+        if($psversiontable.BuildVersion.Major -le 6)
         {            
             netsh advfirewall firewall delete rule name="sshd" program="$($OpenSSHTestInfo['OpenSSHBinPath'])\sshd.exe" protocol=any dir=in
         }    
@@ -43,16 +36,8 @@ Describe "Tests for host keys file permission" -Tags "CI" {
             $systemSid = Get-UserSID -WellKnownSidType ([System.Security.Principal.WellKnownSidType]::LocalSystemSid)
             $adminsSid = Get-UserSID -WellKnownSidType ([System.Security.Principal.WellKnownSidType]::BuiltinAdministratorsSid)
             $currentUserSid = Get-UserSID -User "$($env:USERDOMAIN)\$($env:USERNAME)"
-            $objUserSid = Get-UserSID -User $ssouser
-            $everyoneSid = Get-UserSID -WellKnownSidType ([System.Security.Principal.WellKnownSidType]::WorldSid)
+            $everyoneSid = Get-UserSID -WellKnownSidType ([System.Security.Principal.WellKnownSidType]::WorldSid)           
             
-            $hostKeyFilePath = join-path $testDir hostkeyFilePermTest_ed25519_key
-            if(Test-path $hostKeyFilePath -PathType Leaf) {
-                Repair-SshdHostKeyPermission -filepath $hostKeyFilePath -confirm:$false
-            }
-            Remove-Item -path "$hostKeyFilePath*" -Force -ErrorAction SilentlyContinue
-            ssh-keygen.exe -t ed25519 -f $hostKeyFilePath -P `"`"
-            Get-Process -Name sshd  -ErrorAction SilentlyContinue | Where-Object {$_.SessionID -ne 0} | Stop-process -force -ErrorAction SilentlyContinue
             $tI=1
             
             function WaitForValidation

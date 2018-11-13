@@ -4,7 +4,7 @@ $tC = 1
 $tI = 0
 $suite = "certauth"
         
-Describe "E2E scenarios for certificate authentication" -Tags "CI" {
+Describe "E2E scenarios for certificate authentication" -Tags "Scenario" {
     BeforeAll {        
         if($OpenSSHTestInfo -eq $null)
         {
