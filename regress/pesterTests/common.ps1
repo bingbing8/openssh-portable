@@ -47,18 +47,7 @@ function Set-TestCommons
         [string]$user_key_type = "ed25519",
         [string]$user_key_file = "$Script:TestDirectory\user_key_$user_key_type",
         [string]$server = "localhost")
-
-        if(-not $env:path.tolower().startswith($Script:SSHBinaryPath.tolower())){
-            $env:path = "$Script:SSHBinaryPath;$env:path"
-        }        
-
-        if(-not (Test-Path $Script:TestDirectory))
-        {
-            New-Item $Script:TestDirectory -ItemType directory -Force -ErrorAction SilentlyContinue | Out-Null
-        }
-        else {
-            Get-ChildItem $Script:TestDirectory | Remove-Item -Recurse | Out-Null
-        }
+        
         $host_key_files = @()
         $host_key_type | % {
             $host_key = "$Script:TestDirectory\hostkey_$_"
@@ -73,14 +62,11 @@ function Set-TestCommons
 
         Write-SSHDConfig -Port $port -Host_Key_Files $host_key_files -Authorized_Keys_File $authorized_keys_file -SSHD_Config_Path "$Script:TestDirectory\sshd_config"
         Start-SSHDDaemon -SSHD_Config_Path "$Script:TestDirectory\sshd_config"
+
         #generate known hosts
-        
         $Script:Known_host_file = "$Script:TestDirectory\known_hosts"
-        #& "$binpath\ssh-keyscan.exe" -p $port $server 1> $known_host_file 2> "error.txt"
-        $host_key_files | % {
-            $hk = (Get-content "$_.pub") -split ' '
-            "[$server]:$port $($hk[0]) $($hk[1])" | Add-Content $Script:Known_host_file
-        }        
+        Set-Content -Path "$Script:TestDirectory\tmp.txt" -Value $server
+        cmd /c "ssh-keyscan.exe -p $port -f `"$Script:TestDirectory\tmp.txt`" 2> `"$Script:TestDirectory\error.txt`"" | Set-Content "$Script:known_host_file" -force
 
         Write-SSHConfig -Target $target -HostName $server -Port $port -IdentityFile $user_key_file -UserKnownHostsFile $Script:Known_host_file -SSH_Config_Path $ssh_config_file
 }
@@ -155,6 +141,7 @@ function Write-SSHDConfig
     "AuthorizedKeysFile $Authorized_Keys" | Add-Content $SSHD_Config_Path
     "LogLevel DEBUG3" | Add-Content $SSHD_Config_Path
     "SyslogFacility LOCAL0" | Add-Content $SSHD_Config_Path
+    "Subsystem sftp	sftp-server.exe -l DEBUG3" | Add-Content $SSHD_Config_Path
 }
 
 function Write-SSHConfig
@@ -190,4 +177,16 @@ if(-not [string]::IsNullOrWhiteSpace($OpenSSHBinPath)) {
 }
 else {
     $Script:SSHBinaryPath = Find-OpenSSHBinPath
+}
+
+if(-not $env:path.tolower().startswith($Script:SSHBinaryPath.tolower())){
+    $env:path = "$Script:SSHBinaryPath;$env:path"
+}
+
+if(-not (Test-Path $Script:TestDirectory))
+{
+    New-Item $Script:TestDirectory -ItemType directory -Force -ErrorAction SilentlyContinue | Out-Null
+}
+else {
+    Get-ChildItem $Script:TestDirectory | Remove-Item -Recurse | Out-Null
 }

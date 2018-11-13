@@ -123,6 +123,8 @@ Describe "Tests for scp command" -Tags "CI" {
         {
             Get-Item $DestinationDir | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
         }
+        
+        Clear-TestCommons
     }
 
     BeforeAll {

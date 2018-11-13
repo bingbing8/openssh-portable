@@ -1678,7 +1678,11 @@ parse_dispatch_command(struct sftp_conn *conn, const char *cmd, char **pwd,
 
 		/* Strip pwd off beginning of non-absolute paths */
 		tmp = NULL;
+#ifdef WINDOWS
+		if (!is_absolute_path(path1))
+#else
 		if (*path1 != '/')
+#endif
 			tmp = *pwd;
 
 		path1 = make_absolute(path1, *pwd);

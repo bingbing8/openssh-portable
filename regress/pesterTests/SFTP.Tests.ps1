@@ -1,17 +1,12 @@
 ﻿If ($PSVersiontable.PSVersion.Major -le 2) {$PSScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path}
 Import-Module $PSScriptRoot\CommonUtils.psm1 -Force
 $tI = 0
+$suite = "sftp"
+$rootDirectory = "C:\Users\yawang\$suite"
+. $PSScriptRoot\common.ps1 -suite $suite -TestDir $rootDirectory
+Import-Module OpenSSHUtils -force
 Describe "SFTP Test Cases" -Tags "CI" {
     BeforeAll {
-        $serverDirectory = $null
-        $clientDirectory = $null
-        if($OpenSSHTestInfo -eq $null)
-        {
-            Throw "`$OpenSSHTestInfo is null. Please run Set-OpenSSHTestEnvironment to set test environments."
-        }
-
-        $rootDirectory = "$($OpenSSHTestInfo["TestDataPath"])\SFTP"
-        
         $outputFileName = "output.txt"
         $batchFileName = "sftp-batchcmds.txt"
         $tempFileName = "tempFile.txt"
@@ -23,21 +18,26 @@ Describe "SFTP Test Cases" -Tags "CI" {
         $clientDirectory = Join-Path $rootDirectory 'client_dir'
         $serverDirectory = Join-Path $rootDirectory 'server_dir'
 
-        $null = New-Item $clientDirectory -ItemType directory -Force
-        $null = New-Item $serverDirectory -ItemType directory -Force
-        $null = New-Item $tempFilePath -ItemType file -Force -value "temp file data"
-        $null = New-Item $tempUnicodeFilePath -ItemType file -Force -value "temp file data"
+        New-Item $clientDirectory -ItemType directory -Force | Out-Null
+        New-Item $serverDirectory -ItemType directory -Force | Out-Null
+        New-Item $tempFilePath -ItemType file -Force -value "temp file data" | Out-Null
+        New-Item $tempUnicodeFilePath -ItemType file -Force -value "temp file data" | Out-Null
 
-        $server = $OpenSSHTestInfo["Target"]
-        $port = $OpenSSHTestInfo["Port"]
-        $ssouser = $OpenSSHTestInfo["SSOUser"]
+        $port = 47002
+        $server = "localhost"
+        $user_key_type = "ed25519"
+        $user_key_file = "$testDir\user_key_$user_key_type"
+
+        #other default vars: -TargetName "test_target" -host_key_type "ed25519" -user_key_type "ed25519"
+        Set-TestCommons -port $port -Server $server -user_key_file $user_key_file
+
+        $ssh_config = $script:SSH_Config_file        
 
         Remove-item (Join-Path $rootDirectory "*.$outputFileName") -Force -ErrorAction SilentlyContinue                
         Remove-item (Join-Path $rootDirectory "*.$batchFileName") -Force -ErrorAction SilentlyContinue
-        Remove-item (Join-Path $rootDirectory "*.log") -Force -ErrorAction SilentlyContinue
-        
-        $platform = Get-Platform
-        $skip = ($platform -eq [PlatformType]::Windows) -and ($PSVersionTable.PSVersion.Major -le 2)
+        Remove-item (Join-Path $rootDirectory "*.log") -Force -ErrorAction SilentlyContinue        
+
+        $skip = $PSVersionTable.PSVersion.Major -le 2
 
         $testData1 = @(
              @{
@@ -164,53 +164,29 @@ Describe "SFTP Test Cases" -Tags "CI" {
                 tmpDirectoryName2 = "test_dir_2"
                 tmpDirectoryPath2 = (join-path $serverDirectory "test_dir_2")
             }
-        )
-
-        # for the first time, delete the existing log files.
-        if ($OpenSSHTestInfo['DebugMode'])
-        {
-            Clear-Content "$env:ProgramData\ssh\logs\ssh-agent.log" -Force -ErrorAction SilentlyContinue
-            Clear-Content "$env:ProgramData\ssh\logs\sshd.log" -Force -ErrorAction SilentlyContinue
-            Clear-Content "$env:ProgramData\ssh\logs\sftp-server.log" -Force -ErrorAction SilentlyContinue
-        }
-
-        function CopyDebugLogs {
-            if($OpenSSHTestInfo["DebugMode"])
-            {
-                Copy-Item "$env:ProgramData\ssh\logs\ssh-agent.log" "$rootDirectory\ssh-agent_$tI.log" -Force -ErrorAction SilentlyContinue
-                Copy-Item "$env:ProgramData\ssh\logs\sshd.log" "$rootDirectory\sshd_$tI.log" -Force -ErrorAction SilentlyContinue
-                Copy-Item "$env:ProgramData\ssh\logs\sftp-server.log" "$rootDirectory\sftp-server_$tI.log" -Force -ErrorAction SilentlyContinue
-                
-                # clear the ssh-agent, sshd logs so that next testcase will get fresh logs.
-                Clear-Content "$env:ProgramData\ssh\logs\ssh-agent.log" -Force -ErrorAction SilentlyContinue
-                Clear-Content "$env:ProgramData\ssh\logs\sshd.log" -Force -ErrorAction SilentlyContinue
-                Clear-Content "$env:ProgramData\ssh\logs\sftp-server.log" -Force -ErrorAction SilentlyContinue
-            }
-        }
+        )        
     }
 
     AfterAll {
-       if($serverDirectory) { Get-ChildItem $serverDirectory | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue }
-       if($clientDirectory) { Get-ChildItem $clientDirectory | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue }
+       if(Test-path $serverDirectory -pathtype Container) { Get-ChildItem $serverDirectory | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue }
+       if(Test-path $clientDirectory -pathtype Container) { Get-ChildItem $clientDirectory | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue }
+       Clear-TestCommons
     }
 
     BeforeEach {
-       if($serverDirectory) { Get-ChildItem $serverDirectory | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue }
-       if($clientDirectory) { Get-ChildItem $clientDirectory | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue }
+       if(Test-path $serverDirectory -pathtype Container) { Get-ChildItem $serverDirectory | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue }
+       if(Test-path $clientDirectory -pathtype Container) { Get-ChildItem $clientDirectory | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue }
        $outputFilePath = Join-Path $rootDirectory "$tI.$outputFileName"
        $batchFilePath = Join-Path $rootDirectory "$tI.$batchFileName"
     }
 
-    AfterEach {
-        CopyDebugLogs
-        $tI++
-    }    
+    AfterEach { $tI++}    
 
     It '<Title>' -TestCases:$testData1 {
        param([string]$Title, $Options, $Commands, $ExpectedOutput)
 
        Set-Content $batchFilePath -Encoding UTF8 -value $Commands
-       $str = $ExecutionContext.InvokeCommand.ExpandString("sftp -P $port $($Options) -b $batchFilePath test_target > $outputFilePath")
+       $str = $ExecutionContext.InvokeCommand.ExpandString("sftp -F $ssh_config -P $port $($Options) -b $batchFilePath test_target > $outputFilePath")
        iex $str
 
        #validate file content.
@@ -226,7 +202,7 @@ Describe "SFTP Test Cases" -Tags "CI" {
                     put $tmpFilePath1 $tmpDirectoryPath1
                     ls $tmpDirectoryPath1"
        Set-Content $batchFilePath  -Encoding UTF8 -value $commands
-       $str = $ExecutionContext.InvokeCommand.ExpandString("sftp -P $port $($Options) test_target > $outputFilePath")
+       $str = $ExecutionContext.InvokeCommand.ExpandString("sftp -F $ssh_config -P $port $($Options) test_target > $outputFilePath")
        iex $str
        Test-Path (join-path $tmpDirectoryPath1 $tmpFileName1) | Should be $true
 
@@ -235,7 +211,7 @@ Describe "SFTP Test Cases" -Tags "CI" {
                     pwd
                    "
        Set-Content $batchFilePath  -Encoding UTF8 -value $commands
-       $str = $ExecutionContext.InvokeCommand.ExpandString("sftp -P $port $($Options) test_target > $outputFilePath")
+       $str = $ExecutionContext.InvokeCommand.ExpandString("sftp -F $ssh_config -P $port $($Options) test_target > $outputFilePath")
        iex $str
        Test-Path (join-path $tmpDirectoryPath1 $tmpFileName1) | Should be $false
 
@@ -246,7 +222,7 @@ Describe "SFTP Test Cases" -Tags "CI" {
                     ls $tmpDirectoryPath1
                     pwd"
        Set-Content $batchFilePath -Encoding UTF8 -value $commands
-       $str = $ExecutionContext.InvokeCommand.ExpandString("sftp -P $port $($Options) test_target > $outputFilePath")
+       $str = $ExecutionContext.InvokeCommand.ExpandString("sftp -F $ssh_config -P $port $($Options) test_target > $outputFilePath")
        iex $str
        Test-Path (join-path $tmpDirectoryPath1 $tmpFileName2) | Should be $true
 
@@ -256,7 +232,7 @@ Describe "SFTP Test Cases" -Tags "CI" {
                     rename $tmpDirectoryPath1 $tmpDirectoryPath2
                     ls $serverDirectory"
        Set-Content $batchFilePath -Encoding UTF8 -value $commands
-       $str = $ExecutionContext.InvokeCommand.ExpandString("sftp -P $port $($Options) test_target > $outputFilePath")
+       $str = $ExecutionContext.InvokeCommand.ExpandString("sftp -F $ssh_config -P $port $($Options) test_target > $outputFilePath")
        iex $str
        Test-Path $tmpDirectoryPath2 | Should be $true
 
@@ -265,7 +241,7 @@ Describe "SFTP Test Cases" -Tags "CI" {
        $commands = "rmdir $tmpDirectoryPath2
                     ls $serverDirectory"
        Set-Content $batchFilePath -Encoding UTF8 -value $commands
-       $str = $ExecutionContext.InvokeCommand.ExpandString("sftp -P $port $($Options) test_target > $outputFilePath")
+       $str = $ExecutionContext.InvokeCommand.ExpandString("sftp -F $ssh_config -P $port $($Options) test_target > $outputFilePath")
        iex $str
        Test-Path $tmpDirectoryPath2 | Should be $false
     }
@@ -287,12 +263,13 @@ Describe "SFTP Test Cases" -Tags "CI" {
 
        $Commands = "ls $serverDirectory"
        Set-Content $batchFilePath -Encoding UTF8 -value $Commands
-       $str = $ExecutionContext.InvokeCommand.ExpandString("sftp -b $batchFilePath test_target > $outputFilePath")
+       $str = $ExecutionContext.InvokeCommand.ExpandString("sftp -F $ssh_config -b $batchFilePath test_target > $outputFilePath")
        iex $str
        $content = Get-Content $outputFilePath
-       
+       Write-host $content
        #cleanup
        $HasAccessPattern = $permTestHasAccessFilePath.Replace("\", "[/\\]")
+       Write-host $content
        $matches = @($content | select-string -Pattern "^/$HasAccessPattern\s{0,}$")
        $matches.count | Should be 1
 

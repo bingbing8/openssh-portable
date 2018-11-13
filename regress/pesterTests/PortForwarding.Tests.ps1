@@ -23,6 +23,9 @@ Describe "E2E scenarios for port forwarding" -Tags "CI" {
         $logFile = Join-Path $testDir "$tC.$tI.log.txt"
     }        
     AfterEach {$tI++;}
+    AfterAll {
+        Clear-TestCommons
+    }
 
     Context "$tC - Basic port forwarding scenarios"  {
         BeforeAll {$tI=1}
