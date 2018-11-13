@@ -111,21 +111,19 @@ function Clear-TestCommons
     if($env:path.tolower().startswith($Script:SSHBinaryPath.tolower())){
         $env:path = $env:path.replace("$Script:SSHBinaryPath.tolower();", "")
     }
-
 }
 
 function Stop-SSHDDaemon
-{   
+{
     if($Script:newProcess) {
         $Script:newProcess | Stop-Process -ErrorAction SilentlyContinue
     }
     $Script:newProcess = $null
      
     if($psversiontable.BuildVersion.Major -le 6)
-    {            
+    {
         netsh advfirewall firewall delete rule name="sshd" program="$Script:SSHBinaryPath\sshd.exe" protocol=any dir=in
-    }
- 
+    } 
 }
 
 function Write-SSHDConfig

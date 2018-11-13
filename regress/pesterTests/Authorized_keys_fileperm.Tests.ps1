@@ -69,7 +69,7 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
             $o | Should Be "1234"
         }
 
-        It "$tC.$tI-authorized_keys-positive(authorized_keys is owned by local system)"  -skip:$skip {
+        It "$tC.$tI-authorized_keys-positive(authorized_keys is owned by local system)"{
             #setup to have system as owner and grant it full control
             Repair-FilePermission -Filepath $authorized_keys -Owner $systemSid -FullAccessNeeded  $adminsSid,$systemSid,$currentUserSid -confirm:$false
             $o = ssh  -F $ssh_config test_target echo 1234
@@ -90,7 +90,7 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
             $o | Should Be "1234"
         }
 
-        <#It "$tC.$tI-authorized_keys-negative(authorized_keys is owned by other admin user)"  -skip:$skip {
+        <#It "$tC.$tI-authorized_keys-negative(authorized_keys is owned by other admin user)"{
             #setup to have current user (admin user) as owner and grant it full control
             Repair-FilePermission -Filepath $authorizedkeyPath -Owner $currentUserSid -FullAccessNeeded $adminsSid,$systemSid -confirm:$false
 
@@ -103,7 +103,7 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
             $sshdlog | Should -FileContentMatch "Authentication refused."            
         }
 
-        It "$tC.$tI-authorized_keys-negative(other account can access private key file)"  -skip:$skip {
+        It "$tC.$tI-authorized_keys-negative(other account can access private key file)"{
             #setup to have current user as owner and grant it full control            
             Repair-FilePermission -Filepath $authorizedkeyPath -Owner $objUserSid -FullAccessNeeded $adminsSid,$systemSid,$objUserSid -confirm:$false
 
@@ -120,7 +120,7 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
             $sshdlog | Should Contain "Authentication refused."
         }
 
-        It "$tC.$tI-authorized_keys-negative(authorized_keys is owned by other non-admin user)"  -skip:$skip {
+        It "$tC.$tI-authorized_keys-negative(authorized_keys is owned by other non-admin user)"{
             #setup to have PwdUser as owner and grant it full control            
             $objPwdUserSid = Get-UserSid -User $PwdUser
             Repair-FilePermission -Filepath $authorizedkeyPath -Owner $objPwdUserSid -FullAccessNeeded $adminsSid,$systemSid,$objPwdUser -confirm:$false
