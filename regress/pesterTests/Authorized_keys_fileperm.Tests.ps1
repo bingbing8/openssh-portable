@@ -62,12 +62,12 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
             $tC++
         }
 
-        <#It "$tC.$tI-authorized_keys-positive(pwd user is the owner and running process can access to the file)" {
+        It "$tC.$tI-authorized_keys-positive(pwd user is the owner)" {
             #setup to have ssouser as owner and grant current user read and write, admins group, and local system full control
-            Repair-FilePermission -Filepath $authorized_keys -Owners $currentUserSid -FullAccessNeeded  $adminsSid,$systemSid -confirm:$false
+            Repair-FilePermission -Filepath $authorized_keys -Owners $currentUserSid -FullAccessNeeded  $adminsSid,$systemSid,$authorized_keys -confirm:$false
             $o = ssh -F $ssh_config test_target echo 1234
             $o | Should Be "1234"
-        }#>
+        }
 
         It "$tC.$tI-authorized_keys-positive(authorized_keys is owned by local system)"{
             #setup to have system as owner and grant it full control
