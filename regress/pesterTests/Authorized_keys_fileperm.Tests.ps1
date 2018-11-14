@@ -11,14 +11,6 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
         $sshdLogName = "sshdlog.txt"
         $port = 47002
         $server = "localhost"
-        $ssh_config_file = "$testDir\ssh_config"
-        
-        #other default vars: -TargetName "test_target" -host_key_type "ed25519" -user_key_type "ed25519" -user_key_file "$testDir\user_key_$user_key_type" -known_host_file "$testDir\known_hosts"
-        Set-TestCommons -port $port -Server $server -ssh_config_file $ssh_config_file
-
-        $ssh_config = $script:SSH_Config_file
-        $known_host = $Script:Known_host_file
-        $authorized_keys = $Script:Authorized_keys_file
 
         #$PwdUser = $OpenSSHTestInfo["PasswdUser"]
         #$ssouserProfile = $OpenSSHTestInfo["SSOUserProfile"]        
@@ -26,10 +18,6 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
     }
 
     AfterEach { $tI++ }
-    
-    AfterAll {
-        Clear-TestCommons
-    }
 
     Context "Authorized key file permission" {
         BeforeAll {
@@ -48,6 +36,13 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
             $systemSid = Get-UserSID -WellKnownSidType ([System.Security.Principal.WellKnownSidType]::LocalSystemSid)
             $adminsSid = Get-UserSID -WellKnownSidType ([System.Security.Principal.WellKnownSidType]::BuiltinAdministratorsSid)
             $currentUserSid = Get-UserSID -User "$($env:USERDOMAIN)\$($env:USERNAME)"
+            
+            $ssh_config_file = "$testDir\ssh_config"
+        
+            #other default vars: -TargetName "test_target" -host_key_type "ed25519" -user_key_type "ed25519" -user_key_file "$testDir\user_key_$user_key_type" -known_host_file "$testDir\known_hosts"
+            Set-TestCommons -port $port -Server $server -ssh_config_file $ssh_config_file
+
+            $authorized_keys = $Script:Authorized_keys_file
 
             Repair-AuthorizedKeyPermission -Filepath $authorized_keys -confirm:$false
                         
@@ -57,7 +52,7 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
         }
 
         AfterAll {
-            Repair-AuthorizedKeyPermission -Filepath $authorized_keys -confirm:$false
+            Clear-TestCommons
             Remove-PasswordSetting
             $tC++
         }
@@ -65,28 +60,28 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
         It "$tC.$tI-authorized_keys-positive(authorized_keys is owned by local system)"{
             #setup to have system as owner and grant it full control
             Repair-FilePermission -Filepath $authorized_keys -Owner $systemSid -FullAccessNeeded  $adminsSid,$systemSid,$currentUserSid -confirm:$false
-            $o = ssh  -F $ssh_config test_target echo 1234
+            $o = ssh  -F $ssh_config_file test_target echo 1234
             $o | Should Be "1234"
         }
 
         It "$tC.$tI-authorized_keys-positive(authorized_keys is owned by admins group and pwd does not have explict ACE)" {
             #setup to have admin group as owner and grant it full control
             Repair-FilePermission -Filepath $authorized_keys -Owner $adminsSid -FullAccessNeeded $adminsSid,$systemSid -confirm:$false
-            $o = ssh  -F $ssh_config test_target echo 1234
+            $o = ssh  -F $ssh_config_file test_target echo 1234
             $o | Should Be "1234"
         }
 
         It "$tC.$tI-authorized_keys-positive(authorized_keys is owned by admins group and pwd have explict ACE)" {
             #setup to have admin group as owner and grant it full control
             Repair-FilePermission -Filepath $authorized_keys -Owner $adminsSid -FullAccessNeeded $adminsSid,$systemSid,$currentUserSid -confirm:$false
-            $o = ssh  -F $ssh_config test_target echo 1234
+            $o = ssh  -F $ssh_config_file test_target echo 1234
             $o | Should Be "1234"
         }
 
         It "$tC.$tI-authorized_keys-positive(pwd user is the owner)" {
             #setup to have ssouser as owner and grant current user read and write, admins group, and local system full control
             Repair-FilePermission -Filepath $authorized_keys -Owners $currentUserSid -FullAccessNeeded  $adminsSid,$systemSid,$currentUserSid -confirm:$false
-            $o = ssh -F $ssh_config test_target echo 1234
+            $o = ssh -F $ssh_config_file test_target echo 1234
             $o | Should Be "1234"
         }
 
