@@ -5,7 +5,6 @@ $Script:newProcess = $null
 $Script:SSHBinaryPath = ""
 $Script:TestDirectory = $TestDir
 $Script:TestSuite = $Suite
-$Script:SSH_Config_file = "$Script:TestDirectory\ssh_config"
 $Script:Authorized_keys_file = $null
 $Script:Known_host_file = $null
 
@@ -45,32 +44,45 @@ function Set-TestCommons
         [string]$target = "test_target",
         [string]$port = 47002,
         [string[]]$host_key_type = "ed25519",
+        [string[]]$host_key_file_paths = $null,
         [string]$user_key_type = "ed25519",
         [string]$user_key_file = "$Script:TestDirectory\user_key_$user_key_type",
         [string]$server = "localhost",
-        [string]$ExtraArglist)
+        [string]$ExtraArglist,
+        [switch]$serveronly)
         
-        $host_key_files = @()
-        $host_key_type | % {
-            $host_key = "$Script:TestDirectory\hostkey_$_"
-            $host_key_files += $host_key
-            ssh-keygen.exe -t $_ -P "`"`"" -f $host_key
+        if($host_key_file_paths -and ($host_key_file_paths.count -gt 0) -and (Test-Path $host_key_file_paths[0])){
+            $host_key_files = $host_key_file_paths;
         }
-   
-        ssh-keygen.exe -t $user_key_type -P "`"`"" -f $user_key_file
+        else {
+            $host_key_files = @()
+            $host_key_type | % {
+                $host_key = "$Script:TestDirectory\hostkey_$_"
+                $host_key_files += $host_key
+                ssh-keygen.exe -t $_ -P "`"`"" -f $host_key
+            }
+        }
+        if($serveronly) {
+            Write-SSHDConfig -Port $port -Host_Key_Files $host_key_files -SSHD_Config_Path "$Script:TestDirectory\sshd_config"
+        }
+        else{
+            ssh-keygen.exe -t $user_key_type -P "`"`"" -f $user_key_file
 
-        $Script:Authorized_keys_file = "$Script:TestDirectory\Authorized_Keys"
-        copy-item "$user_key_file.pub" $Script:Authorized_keys_file -force
-
-        Write-SSHDConfig -Port $port -Host_Key_Files $host_key_files -Authorized_Keys_File $Script:Authorized_keys_file -SSHD_Config_Path "$Script:TestDirectory\sshd_config"
+            $Script:Authorized_keys_file = "$Script:TestDirectory\Authorized_Keys"
+            copy-item "$user_key_file.pub" $Script:Authorized_keys_file -force
+            Write-SSHDConfig -Port $port -Host_Key_Files $host_key_files -Authorized_Keys_File $Script:Authorized_keys_file -SSHD_Config_Path "$Script:TestDirectory\sshd_config"
+        }
+        
         Start-SSHDDaemon -SSHD_Config_Path "$Script:TestDirectory\sshd_config" -ExtraArglist $ExtraArglist
 
-        #generate known hosts
-        $Script:Known_host_file = "$Script:TestDirectory\known_hosts"
-        Set-Content -Path "$Script:TestDirectory\tmp.txt" -Value $server
-        cmd /c "ssh-keyscan.exe -p $port -f `"$Script:TestDirectory\tmp.txt`" 2> `"$Script:TestDirectory\error.txt`"" | Set-Content "$Script:known_host_file" -force
+        if(-not $serveronly) {
+            #generate known hosts
+            $Script:Known_host_file = "$Script:TestDirectory\known_hosts"
+            Set-Content -Path "$Script:TestDirectory\tmp.txt" -Value $server
+            cmd /c "ssh-keyscan.exe -p $port -f `"$Script:TestDirectory\tmp.txt`" 2> `"$Script:TestDirectory\error.txt`"" | Set-Content "$Script:known_host_file" -force
 
-        Write-SSHConfig -Target $target -HostName $server -Port $port -IdentityFile $user_key_file -UserKnownHostsFile $Script:Known_host_file -SSH_Config_Path $ssh_config_file
+            Write-SSHConfig -Target $target -HostName $server -Port $port -IdentityFile $user_key_file -UserKnownHostsFile $Script:Known_host_file -SSH_Config_Path $ssh_config_file
+        }
 }
 
 function Start-SSHDDaemon
@@ -132,8 +144,7 @@ function Write-SSHDConfig
         $Port = 47002,
         [parameter(Mandatory=$true)]
         [string[]]$Host_Key_Files,
-        [parameter(Mandatory=$true)]
-        $Authorized_Keys_File,
+        $Authorized_Keys_File = $null,
         $SSHD_Config_Path = "$Script:TestDirectory\sshd_config")
 
     $dir = split-path $SSHD_Config_Path
@@ -149,8 +160,11 @@ function Write-SSHDConfig
         $Host_Key = $_.replace("\", "/")    
         "HostKey $Host_Key" | Add-Content $SSHD_Config_Path
     }
-    $Authorized_Keys = $Authorized_Keys_File.Replace("\", "/")
-    "AuthorizedKeysFile $Authorized_Keys" | Add-Content $SSHD_Config_Path
+    
+    if($Authorized_Keys_File -and (Test-Path $Authorized_Keys_File)) {
+        $Authorized_Keys = $Authorized_Keys_File.Replace("\", "/")
+        "AuthorizedKeysFile $Authorized_Keys" | Add-Content $SSHD_Config_Path
+    }
     "LogLevel DEBUG3" | Add-Content $SSHD_Config_Path
     "SyslogFacility LOCAL0" | Add-Content $SSHD_Config_Path
     "Subsystem sftp	sftp-server.exe -l DEBUG3" | Add-Content $SSHD_Config_Path
