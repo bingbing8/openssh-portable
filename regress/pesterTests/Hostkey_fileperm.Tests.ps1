@@ -94,11 +94,20 @@ Describe "Tests for host keys file permission" -Tags "Scenario" {
             {
                 param([string]$logPath, [int]$length)
                 $num = 0
-                while((-not (Test-Path $logPath -PathType leaf)) -or ((Get-item $logPath).Length -lt $length) -and ($num++ -lt 4))
+                while((-not (Test-Path $logPath -PathType leaf)) -or ((Get-item $logPath).Length -lt $length) -and ($num++ -lt 10))
                 {
                     Start-Sleep -Milliseconds 1000
                 }
                 Stop-SSHDDaemon
+                $num = 0
+                do
+                {
+                    Start-Sleep -Milliseconds 1000
+                    #wait for the log file be able to access
+                    Get-Content $logPath -ErrorVariable a
+                } while ($a -and ($num++ -lt 10))
+                
+                
             }
         }
 
@@ -113,7 +122,7 @@ Describe "Tests for host keys file permission" -Tags "Scenario" {
         }
         AfterAll { $tC++ }
 
-        <#It "$tC.$tI-Host keys-positive (both public and private keys are owned by admin groups)" {            
+        It "$tC.$tI-Host keys-positive (both public and private keys are owned by admin groups)" {            
             Repair-FilePermission -Filepath $hostKeyFilePath -Owners $adminsSid -FullAccessNeeded $adminsSid,$systemSid -confirm:$false
             Repair-FilePermission -Filepath "$hostKeyFilePath.pub" -Owners $adminsSid -FullAccessNeeded $adminsSid,$systemSid -confirm:$false
 
@@ -136,7 +145,7 @@ Describe "Tests for host keys file permission" -Tags "Scenario" {
 
             #validate file content does not contain unprotected info.
             $logPath | Should -Not -FileContentMatch "UNPROTECTED PRIVATE KEY FILE!"
-        }#>
+        }
 
         It "$tC.$tI-Host keys-positive (both public and private keys are owned by system and running process can access to public key file)" -skip:$skip {
             Repair-FilePermission -Filepath $hostKeyFilePath -Owners $systemSid -FullAccessNeeded $systemSid,$adminsSid -ReadAccessNeeded $currentUserSid -confirm:$false
