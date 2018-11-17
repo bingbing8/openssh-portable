@@ -47,6 +47,7 @@ function Set-TestCommons
         [string[]]$host_key_file_paths = $null,
         [string]$user_key_type = "ed25519",
         [string]$user_key_file = "$Script:TestDirectory\user_key_$user_key_type",
+        [string]$ssh_config_file = "$Script:TestDirectory\ssh_config",
         [string]$server = "localhost",
         [string]$ExtraArglist,
         [switch]$serveronly)

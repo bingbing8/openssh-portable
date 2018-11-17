@@ -437,9 +437,10 @@ Describe "E2E scenarios for ssh key management" -Tags "CI" {
             $server = "localhost"
             $user_key_type = "ed25519"
             $user_key_file = "$testDir\user_key_$user_key_type"
+            $ssh_config_file = "$testDir\ssh_config"
 
             #other default vars: -TargetName "test_target" -host_key_type "ed25519"
-            Set-TestCommons -port $port -Server $server -user_key_file $user_key_file -host_key_type @("ed25519","rsa","dsa")
+            Set-TestCommons -port $port -Server $server -user_key_file $user_key_file -host_key_type @("ed25519","rsa","dsa") -SSH_config_file $ssh_config_file
             Remove-item (join-path $testDir "$tC.$tI.out.txt") -force -ErrorAction SilentlyContinue
         }
         BeforeEach {

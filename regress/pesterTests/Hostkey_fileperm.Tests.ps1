@@ -5,7 +5,7 @@ $suite = "hostkey_fileperm"
 $testDir = "$env:temp\$suite"
 . $PSScriptRoot\common.ps1 -suite $suite -TestDir $testDir
 Import-Module "$Script:SSHBinaryPath\OpenSSHUtils" -force
-Describe "Tests for host keys file permission" -Tags "Scenario" {
+Describe "Tests for host keys file permission" -Tags "CI" {
     BeforeAll {        
         $logName = "sshdlog.txt"
         $port = 47002
