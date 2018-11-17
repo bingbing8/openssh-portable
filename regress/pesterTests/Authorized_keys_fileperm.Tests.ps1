@@ -20,19 +20,7 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
     AfterEach { $tI++ }
 
     Context "Authorized key file permission" {
-        BeforeAll {
-            function Add-PasswordSetting
-            {
-                param([string] $pass)
-                if (-not($env:DISPLAY)) {$env:DISPLAY = 1}
-                $env:SSH_ASKPASS="cmd.exe /c echo $pass"
-            }
-
-            function Remove-PasswordSetting
-            {
-                if ($env:DISPLAY -eq 1) { Remove-Item env:\DISPLAY }
-                Remove-item "env:SSH_ASKPASS" -ErrorAction SilentlyContinue
-            }
+        BeforeAll {            
             $systemSid = Get-UserSID -WellKnownSidType ([System.Security.Principal.WellKnownSidType]::LocalSystemSid)
             $adminsSid = Get-UserSID -WellKnownSidType ([System.Security.Principal.WellKnownSidType]::BuiltinAdministratorsSid)
             $currentUserSid = Get-UserSID -User "$($env:USERDOMAIN)\$($env:USERNAME)"
@@ -43,8 +31,6 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
             Set-TestCommons -port $port -Server $server -ssh_config_file $ssh_config_file
 
             $authorized_keys = $Script:Authorized_keys_file
-
-            Repair-AuthorizedKeyPermission -Filepath $authorized_keys -confirm:$false
                         
             #add wrong password so ssh does not prompt password if failed with authorized keys
             Add-PasswordSetting -Pass "WrongPass"
@@ -64,12 +50,12 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
             $o | Should Be "1234"
         }
 
-        <#It "$tC.$tI-authorized_keys-positive(authorized_keys is owned by admins group and pwd does not have explict ACE)" {
+        It "$tC.$tI-authorized_keys-positive(authorized_keys is owned by admins group and pwd does not have explict ACE)" {
             #setup to have admin group as owner and grant it full control
             Repair-FilePermission -Filepath $authorized_keys -Owner $adminsSid -FullAccessNeeded $adminsSid,$systemSid -confirm:$false
             $o = ssh  -F $ssh_config_file test_target echo 1234
             $o | Should Be "1234"
-        }#>
+        }
 
         It "$tC.$tI-authorized_keys-positive(authorized_keys is owned by admins group and pwd have explict ACE)" {
             #setup to have admin group as owner and grant it full control

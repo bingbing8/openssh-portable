@@ -130,19 +130,7 @@ Describe "E2E scenarios for ssh key management" -Tags "CI" {
                 $a.InheritanceFlags | Should Be ([System.Security.AccessControl.InheritanceFlags]::None)
                 $a.PropagationFlags | Should Be ([System.Security.AccessControl.PropagationFlags]::None)
             }
-        }
-        function Add-PasswordSetting 
-        {
-            param([string] $pass)
-            if (-not($env:DISPLAY)) {$env:DISPLAY = 1}
-            $env:SSH_ASKPASS="cmd.exe /c echo $pass"
-        }
-
-        function Remove-PasswordSetting
-        {
-            if ($env:DISPLAY -eq 1) { Remove-Item env:\DISPLAY }
-            Remove-item "env:SSH_ASKPASS" -ErrorAction SilentlyContinue
-        }
+        }        
     }
 
     BeforeEach {

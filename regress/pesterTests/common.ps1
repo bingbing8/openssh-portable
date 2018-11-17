@@ -66,8 +66,10 @@ function Set-TestCommons
         if($serveronly) {
             Write-SSHDConfig -Port $port -Host_Key_Files $host_key_files -SSHD_Config_Path "$Script:TestDirectory\sshd_config"
         }
-        else{
-            ssh-keygen.exe -t $user_key_type -P "`"`"" -f $user_key_file
+        else {
+            if(-not (Test-Path $user_key_file -PathType Leaf)) {                
+                ssh-keygen.exe -t $user_key_type -P "`"`"" -f $user_key_file
+            }            
 
             $Script:Authorized_keys_file = "$Script:TestDirectory\Authorized_Keys"
             copy-item "$user_key_file.pub" $Script:Authorized_keys_file -force
@@ -197,6 +199,19 @@ function Write-SSHConfig
         if(-not [String]::IsNullOrWhiteSpace($UserKnownHostsFile)) {
             "    UserKnownHostsFile $UserKnownHostsFile" | Add-Content $SSH_Config_Path
         }
+}
+
+function Add-PasswordSetting
+{
+    param([string] $pass)
+    if (-not($env:DISPLAY)) {$env:DISPLAY = 1}
+    $env:SSH_ASKPASS="cmd.exe /c echo $pass"
+}
+
+function Remove-PasswordSetting
+{
+    if ($env:DISPLAY -eq 1) { Remove-Item env:\DISPLAY }
+    Remove-item "env:SSH_ASKPASS" -ErrorAction SilentlyContinue
 }
 
 if(-not [string]::IsNullOrWhiteSpace($OpenSSHBinPath)) {

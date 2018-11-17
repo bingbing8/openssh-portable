@@ -1,12 +1,11 @@
 ﻿If ($PSVersiontable.PSVersion.Major -le 2) {$PSScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path}
-
 $tC = 1
 $tI = 0
 $suite = "userkey_fileperm"
 $testDir = "$env:temp\$suite"
 . $PSScriptRoot\common.ps1 -suite $suite -TestDir $testDir
 Import-Module "$Script:SSHBinaryPath\OpenSSHUtils" -force
-Describe "Tests for user Key file permission" -Tags "Scenario" {
+Describe "Tests for user Key file permission" -Tags "CI" {
     BeforeAll {
         $logName = "log.txt"
         $port = 47002
@@ -31,15 +30,21 @@ Describe "Tests for user Key file permission" -Tags "Scenario" {
     }
 
     AfterEach {$tI++;}    
-
     Context "$tC-ssh with private key file" {
         BeforeAll {
             $user_key_type = "ed25519"
             $user_key_Path = "$testDir\user_key_$user_key_type" 
-            Set-TestCommons -port $port -Server $server -ssh_config_file $ssh_config_file -user_key_type $user_key_type -user_key_file $user_key_Path
+            if(Test-Path $user_key_Path -PathType Leaf) {
+                Remove-Item $user_key_Path -Force | Out-Null
+            }
+            ssh-keygen.exe -t $user_key_type -P `"$keypassphrase`" -f $user_key_Path
+            Set-TestCommons -port $port -Server $server -ssh_config_file $ssh_config_file -user_key_file $user_key_Path
             $tI=1
         }
-        AfterAll {$tC++ }        
+        AfterAll {
+            Clear-TestCommons
+            $tC++
+        }
 
         It "$tC.$tI-ssh with private key file -- positive (Secured private key owned by current user)" {
             Repair-FilePermission -FilePath $user_key_Path -Owners $currentUserSid -FullAccessNeeded $adminsSid,$systemSid,$currentUserSid -confirm:$false
