@@ -5,7 +5,7 @@ $suite = "Cfginclude"
 $testDir = "$env:temp\$suite"
 . $PSScriptRoot\common.ps1 -suite $suite -TestDir $testDir
 Import-Module "$Script:SSHBinaryPath\OpenSSHUtils" -force
-Describe "Tests for ssh config" -Tags "CI" {
+Describe "Tests for ssh config" -Tags "Scenario" {
     BeforeAll {
         $port = 47002
         $logName = "log.txt"
@@ -96,7 +96,7 @@ Describe "Tests for ssh config" -Tags "CI" {
         AfterAll {
             $tC++
         }
-        <# fail on appveyor
+        
         It "$tC.$tI-User SSHConfig-ReadConfig positive (current logon user is the owner)" {
             #setup
             Repair-FilePermission -Filepath $userConfigFile -Owners $currentUserSid -FullAccessNeeded $adminsSid,$systemSid,$currentUserSid -confirm:$false
@@ -104,7 +104,7 @@ Describe "Tests for ssh config" -Tags "CI" {
             #Run
             $o = ssh -F $userConfigFile test_target echo 1234
             $o | Should Be "1234"
-        }#>
+        }
 
         It "$tC.$tI-User SSHConfig-ReadConfig positive (local system is the owner)" {
             #setup
