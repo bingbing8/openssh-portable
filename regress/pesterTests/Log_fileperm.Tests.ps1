@@ -2,7 +2,7 @@
 $tC = 1
 $tI = 0
 $suite = "log_fileperm"
-$testDir = "C:\Users\yawang\$suite"
+$testDir = "$env:temp\$suite"
 . $PSScriptRoot\common.ps1 -suite $suite -TestDir $testDir
 Import-Module "$Script:SSHBinaryPath\OpenSSHUtils" -force
 Describe "Tests for log file permission" -Tags "CI" {
@@ -20,7 +20,12 @@ Describe "Tests for log file permission" -Tags "CI" {
         #only validate owner and ACEs of the file
         function ValidateLogFilePerm {
             param([string]$FilePath)
-            
+            $num = 0
+            while((-not (Test-Path $FilePath -PathType leaf)) -and ($num++ -lt 20))
+            {
+                Start-Sleep -Milliseconds 1000
+            }
+
             $myACL = Get-ACL $FilePath
             $currentOwnerSid = Get-UserSid -User $myACL.Owner
             $currentOwnerSid.Equals($currentUserSid) | Should Be $true
@@ -72,12 +77,14 @@ Describe "Tests for log file permission" -Tags "CI" {
     Context "$tC-SSHD -E Log file permission" {
         BeforeAll { $tI=1 }
         
-        AfterAll { $tC++ }
+        AfterAll {
+            $tC++
+            Clear-TestCommons
+        }
 
         It "$tC.$tI-SSHD -E Log file permission" {
-            Set-TestCommons -port $port -Server $server -ssh_config_file $ssh_config_file -ExtraArglist "-E $logPath"
+            Start-SSHDDaemon -port $port -ExtraArglist "-E $logPath"
             ValidateLogFilePerm -FilePath $logPath
-            Clear-TestCommons
         }
     }
 }

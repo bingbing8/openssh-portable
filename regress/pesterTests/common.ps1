@@ -1,7 +1,6 @@
 ﻿param ([string]$Suite = "openssh", [string]$OpenSSHBinPath, [string]$TestDir = "$env:temp\opensshtest")
 
 If ($PSVersiontable.PSVersion.Major -le 2) {$PSScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path}
-$Script:newProcess = $null
 $Script:SSHBinaryPath = ""
 $Script:TestDirectory = $TestDir
 $Script:TestSuite = $Suite
@@ -38,107 +37,87 @@ function Find-OpenSSHBinPath
     $Script:SSHBinaryPath
 }
 
+function Start-SSHDDaemon
+{
+    param(
+        [string]$port = 47002,
+        [string[]]$host_key_files = $null,
+        [string]$Authorized_Keys_File = $null,
+        [string]$ExtraArglist="")
+
+        if(!$host_key_files) {
+            $host_key_files = @()
+            "ed25519","ecdsa","dsa","rsa" | % {
+                $host_key = "$Script:TestDirectory\hostkey_$_"
+                if(Test-path $host_key -PathType leaf) {
+                    Remove-Item $host_key -force
+                }
+                $host_key_files += $host_key
+                ssh-keygen.exe -t $_ -P "`"`"" -f $host_key
+            }
+        }
+
+        $sshd_config_path = "$Script:TestDirectory\sshd_config"
+        if(!$Authorized_Keys_File)
+        {
+            Write-SSHDConfig -Port $port -Host_Key_Files $host_key_files -SSHD_Config_Path $sshd_config_path
+        }
+        else
+        {
+            Write-SSHDConfig -Port $port -Host_Key_Files $host_key_files -Authorized_Keys_File $Authorized_Keys_File -SSHD_Config_Path $sshd_config_path
+        }
+        if(($existingProcesses = Get-Process -name sshd -ErrorAction SilentlyContinue)){
+            $existingProcesses | Stop-Process
+        }
+        Start-process -FilePath "$($Script:SSHBinaryPath)\sshd.exe" -ArgumentList "-f `"$sshd_config_path`" $ExtraArglist" -NoNewWindow
+    
+        #Sleep for 1 seconds for process to ready to listen
+        $num = 0
+        do
+        {
+            $newProcess = Get-Process -name sshd -ErrorAction SilentlyContinue
+            start-sleep 1
+            $num++
+            if($num -gt 30) { break }
+        } while ($newProcess -eq $null)
+}
+
 function Set-TestCommons
 {
     param(
         [string]$target = "test_target",
         [string]$port = 47002,
-        [string[]]$host_key_type = "ed25519",
-        [string[]]$host_key_file_paths = $null,
+        [string[]]$host_key_files = $null,
         [string]$user_key_type = "ed25519",
         [string]$user_key_file = "$Script:TestDirectory\user_key_$user_key_type",
         [string]$ssh_config_file = "$Script:TestDirectory\ssh_config",
         [string]$server = "localhost",
-        [string]$ExtraArglist,
-        [switch]$serveronly)
-        
-        if($host_key_file_paths -and ($host_key_file_paths.count -gt 0) -and (Test-Path $host_key_file_paths[0])){
-            $host_key_files = $host_key_file_paths;
-        }
-        else {
-            $host_key_files = @()
-            $host_key_type | % {
-                $host_key = "$Script:TestDirectory\hostkey_$_"
-                $host_key_files += $host_key
-                ssh-keygen.exe -t $_ -P "`"`"" -f $host_key
-            }
-        }
-        if($serveronly) {
-            Write-SSHDConfig -Port $port -Host_Key_Files $host_key_files -SSHD_Config_Path "$Script:TestDirectory\sshd_config"
-        }
-        else {
-            if(-not (Test-Path $user_key_file -PathType Leaf)) {
-                ssh-keygen.exe -t $user_key_type -P "`"`"" -f $user_key_file
-            }            
+        [string]$ExtraArglist = "")
 
-            $Script:Authorized_keys_file = "$Script:TestDirectory\Authorized_Keys"
-            copy-item "$user_key_file.pub" $Script:Authorized_keys_file -force
-            Write-SSHDConfig -Port $port -Host_Key_Files $host_key_files -Authorized_Keys_File $Script:Authorized_keys_file -SSHD_Config_Path "$Script:TestDirectory\sshd_config"
-        }
-        
-        Start-SSHDDaemon -SSHD_Config_Path "$Script:TestDirectory\sshd_config" -ExtraArglist $ExtraArglist
+        if(-not (Test-Path $user_key_file -PathType Leaf)) {
+            ssh-keygen.exe -t $user_key_type -P "`"`"" -f $user_key_file
+        }            
 
-        if(-not $serveronly) {
-            #generate known hosts
-            $Script:Known_host_file = "$Script:TestDirectory\known_hosts"
-            Set-Content -Path "$Script:TestDirectory\tmp.txt" -Value $server
-            cmd /c "ssh-keyscan.exe -p $port -f `"$Script:TestDirectory\tmp.txt`" 2> `"$Script:TestDirectory\error.txt`"" | Set-Content "$Script:known_host_file" -force
+        $Script:Authorized_keys_file = "$Script:TestDirectory\Authorized_Keys"
+        copy-item "$user_key_file.pub" $Script:Authorized_keys_file -force
+        Start-SSHDDaemon -host_key_files $host_key_files -Authorized_Keys_File $Script:Authorized_keys_file -port $port -ExtraArglist $ExtraArglist
 
-            Write-SSHConfig -Target $target -HostName $server -Port $port -IdentityFile $user_key_file -UserKnownHostsFile $Script:Known_host_file -SSH_Config_Path $ssh_config_file
-        }
-}
+        #generate known hosts
+        $Script:Known_host_file = "$Script:TestDirectory\known_hosts"
+        Set-Content -Path "$Script:TestDirectory\tmp.txt" -Value $server
+        cmd /c "ssh-keyscan.exe -p $port -f `"$Script:TestDirectory\tmp.txt`" 2> `"$Script:TestDirectory\error.txt`"" | Set-Content "$Script:known_host_file" -force
 
-function Start-SSHDDaemon
-{
-    param(
-    [string]$SSHD_Config_Path = "$Script:TestDirectory\sshd_config",
-    [string]$ExtraArglist)    
-    
-    $Script:newProcess = $null
-    if(($existingProcesses = Get-Process -name sshd -ErrorAction SilentlyContinue)){
-        $existingProcesses | Stop-Process
-    }
-
-    #suppress the firewall blocking dialogue on win7
-    #netsh advfirewall firewall add rule name="sshd" program="$Script:SSHBinaryPath\sshd.exe" protocol=any action=allow dir=in
-    
-    if($psversiontable.BuildVersion.Major -le 6)
-    {
-        #suppress the firewall blocking dialogue on win7
-        netsh advfirewall firewall add rule name="sshd" program="$Script:SSHBinaryPath\sshd.exe" protocol=any action=allow dir=in
-    }
-    Start-process -FilePath "$($Script:SSHBinaryPath)\sshd.exe" -ArgumentList "-f `"$SSHD_Config_Path`" $ExtraArglist" -NoNewWindow
-    
-    #Sleep for 1 seconds for process to ready to listen
-    $num = 0
-    do
-    {
-        $Script:newProcess = Get-Process -name sshd -ErrorAction SilentlyContinue
-        start-sleep 1
-        $num++
-        if($num -gt 30) { break }
-    } while ($Script:newProcess -eq $null)    
+        Write-SSHConfig -Target $target -HostName $server -Port $port -IdentityFile $user_key_file -UserKnownHostsFile $Script:Known_host_file -SSH_Config_Path $ssh_config_file
 }
 
 function Clear-TestCommons
 {
-    Stop-SSHDDaemon
+    if(($sshdprocess = get-process -name sshd -ErrorAction SilentlyContinue)) {
+        $sshdprocess | Stop-Process -ErrorAction SilentlyContinue
+    }
     if($env:path.tolower().startswith($Script:SSHBinaryPath.tolower())){
         $env:path = $env:path.replace("$Script:SSHBinaryPath.tolower();", "")
     }
-}
-
-function Stop-SSHDDaemon
-{
-    if($Script:newProcess) {
-        $Script:newProcess | Stop-Process -ErrorAction SilentlyContinue
-    }
-    $Script:newProcess = $null
-     
-    if($psversiontable.BuildVersion.Major -le 6)
-    {
-        netsh advfirewall firewall delete rule name="sshd" program="$Script:SSHBinaryPath\sshd.exe" protocol=any dir=in
-    } 
 }
 
 function Write-SSHDConfig
@@ -213,6 +192,8 @@ function Remove-PasswordSetting
     if ($env:DISPLAY -eq 1) { Remove-Item env:\DISPLAY }
     Remove-item "env:SSH_ASKPASS" -ErrorAction SilentlyContinue
 }
+
+Stop-SSHDDaemon
 
 if(-not [string]::IsNullOrWhiteSpace($OpenSSHBinPath)) {
     $Script:SSHBinaryPath = $OpenSSHBinPath

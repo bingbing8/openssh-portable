@@ -16,7 +16,7 @@ Describe "E2E scenarios for ssh client" -Tags "CI" {
         $user_key_file = "$testDir\user_key_$user_key_type"
         $ssh_config_file = "$testDir\ssh_config"
 
-        #other default vars: -TargetName "test_target" -host_key_type "ed25519" -user_key_type "ed25519"
+        #other default vars: -TargetName "test_target" -user_key_type "ed25519"
         Set-TestCommons -port $port -Server $server -user_key_file $user_key_file -ssh_config_file $ssh_config_file
         
         $known_host = $Script:Known_host_file

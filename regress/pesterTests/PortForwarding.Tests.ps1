@@ -13,7 +13,7 @@ Describe "E2E scenarios for port forwarding" -Tags "CI" {
         #skip on ps 2 becase non-interactive cmd require a ENTER before it returns on ps2
         $skip = $PSVersionTable.PSVersion.Major -le 2
 
-        #other default vars: -TargetName "test_target" -host_key_type "ed25519" -user_key_type "ed25519" -user_key_file "$testDir\user_key_$user_key_type" -known_host_file "$testDir\known_hosts"
+        #other default vars: -TargetName "test_target" -user_key_type "ed25519" -user_key_file "$testDir\user_key_$user_key_type" -known_host_file "$testDir\known_hosts"
         Set-TestCommons -port $port -Server $server -ssh_config_file $ssh_config_file
     }
 

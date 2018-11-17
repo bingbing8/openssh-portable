@@ -106,8 +106,6 @@ Describe "Tests for host keys file permission" -Tags "CI" {
                     #wait for the log file be able to access
                     Get-Content $logPath -ErrorVariable a
                 } while ($a -and ($num++ -lt 10))
-                
-                
             }
         }
 
@@ -127,7 +125,7 @@ Describe "Tests for host keys file permission" -Tags "CI" {
             Repair-FilePermission -Filepath "$hostKeyFilePath.pub" -Owners $adminsSid -FullAccessNeeded $adminsSid,$systemSid -confirm:$false
 
             #Run
-            Set-TestCommons -port $port -Server $server -host_key_file_paths $hostKeyFilePath -ExtraArglist "-d -h $hostKeyFilePath -E $logPath" -serveronly
+            Start-SSHDDaemon -port $port -ExtraArglist "-d -E $logPath" -host_key_files $hostKeyFilePath
             WaitForValidation -LogPath $logPath -Length 600            
 
             #validate file content does not contain unprotected info.
@@ -140,7 +138,7 @@ Describe "Tests for host keys file permission" -Tags "CI" {
             Repair-FilePermission -Filepath "$hostKeyFilePath.pub" -Owners $adminsSid -FullAccessNeeded $adminsSid,$systemSid -ReadAccessNeeded $everyOneSid -confirm:$false
 
             #Run
-            Set-TestCommons -port $port -Server $server -host_key_file_paths $hostKeyFilePath -ExtraArglist "-d -h $hostKeyFilePath -E $logPath" -serveronly
+            Start-SSHDDaemon -port $port -ExtraArglist "-d -E $logPath" -host_key_files $hostKeyFilePath
             WaitForValidation -LogPath $logPath -Length 600         
 
             #validate file content does not contain unprotected info.
@@ -154,7 +152,7 @@ Describe "Tests for host keys file permission" -Tags "CI" {
             Set-FilePermission -Filepath "$hostKeyFilePath.pub" -UserSid $adminsSid -Action Delete
             
             #Run
-            Set-TestCommons -port $port -Server $server -host_key_file_paths $hostKeyFilePath -ExtraArglist "-d -h $hostKeyFilePath -E $logPath" -serveronly
+            Start-SSHDDaemon -port $port -ExtraArglist "-d -E $logPath" -host_key_files $hostKeyFilePath
             WaitForValidation -LogPath $logPath -Length 600
 
             #validate file content does not contain unprotected info.
@@ -166,7 +164,7 @@ Describe "Tests for host keys file permission" -Tags "CI" {
             Repair-FilePermission -Filepath "$hostKeyFilePath.pub" -Owners $adminsSid -FullAccessNeeded $systemSid,$adminsSid -ReadAccessNeeded $everyOneSid -confirm:$false
             
             #Run
-            Set-TestCommons -port $port -Server $server -host_key_file_paths $hostKeyFilePath -ExtraArglist "-d -h $hostKeyFilePath -E $logPath" -serveronly
+            Start-SSHDDaemon -port $port -ExtraArglist "-d -E $logPath" -host_key_files $hostKeyFilePath
             WaitForValidation -LogPath $logPath -Length 1100
 
             #validate file content contains unprotected info.
@@ -179,7 +177,7 @@ Describe "Tests for host keys file permission" -Tags "CI" {
             Repair-FilePermission -Filepath "$hostKeyFilePath.pub" -Owners $adminsSid -FullAccessNeeded $systemSid,$adminsSid -ReadAccessNeeded $everyOneSid -confirm:$false
 
             #Run
-            Set-TestCommons -port $port -Server $server -host_key_file_paths $hostKeyFilePath -ExtraArglist "-d -h $hostKeyFilePath -E $logPath" -serveronly
+            Start-SSHDDaemon -port $port -ExtraArglist "-d -E $logPath" -host_key_files $hostKeyFilePath
             WaitForValidation -LogPath $logPath -Length 1100
 
             #validate file content contains unprotected info.

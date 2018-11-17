@@ -28,9 +28,8 @@ Describe "SFTP Test Cases" -Tags "CI" {
         $user_key_file = "$testDir\user_key_$user_key_type"
         $ssh_config = "$testDir\ssh_config"
 
-        #other default vars: -TargetName "test_target" -host_key_type "ed25519" -user_key_type "ed25519"
-        Set-TestCommons -port $port -Server $server -user_key_file $user_key_file -ssh_config_file $ssh_config
-           
+        #other default vars: -TargetName "test_target" -user_key_type "ed25519"
+        Set-TestCommons -port $port -Server $server -user_key_file $user_key_file -ssh_config_file $ssh_config           
 
         Remove-item (Join-Path $rootDirectory "*.$outputFileName") -Force -ErrorAction SilentlyContinue                
         Remove-item (Join-Path $rootDirectory "*.$batchFileName") -Force -ErrorAction SilentlyContinue
