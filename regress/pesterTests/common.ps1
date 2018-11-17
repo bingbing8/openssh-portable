@@ -110,11 +110,16 @@ function Set-TestCommons
         Write-SSHConfig -Target $target -HostName $server -Port $port -IdentityFile $user_key_file -UserKnownHostsFile $Script:Known_host_file -SSH_Config_Path $ssh_config_file
 }
 
-function Clear-TestCommons
+function Stop-SSHDDaemon
 {
     if(($sshdprocess = get-process -name sshd -ErrorAction SilentlyContinue)) {
         $sshdprocess | Stop-Process -ErrorAction SilentlyContinue
     }
+}
+
+function Clear-TestCommons
+{
+    Stop-SSHDDaemon
     if($env:path.tolower().startswith($Script:SSHBinaryPath.tolower())){
         $env:path = $env:path.replace("$Script:SSHBinaryPath.tolower();", "")
     }
