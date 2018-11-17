@@ -67,7 +67,7 @@ function Set-TestCommons
             Write-SSHDConfig -Port $port -Host_Key_Files $host_key_files -SSHD_Config_Path "$Script:TestDirectory\sshd_config"
         }
         else {
-            if(-not (Test-Path $user_key_file -PathType Leaf)) {                
+            if(-not (Test-Path $user_key_file -PathType Leaf)) {
                 ssh-keygen.exe -t $user_key_type -P "`"`"" -f $user_key_file
             }            
 

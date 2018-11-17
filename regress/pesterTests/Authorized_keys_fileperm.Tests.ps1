@@ -37,6 +37,10 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
             $tI=1
         }
 
+        AfterEach{
+            Start-Sleep -Milliseconds 1000
+        }
+
         AfterAll {
             Clear-TestCommons
             Remove-PasswordSetting
