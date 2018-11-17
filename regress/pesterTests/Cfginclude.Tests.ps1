@@ -2,7 +2,7 @@
 $tC = 1
 $tI = 0
 $suite = "Cfginclude"
-$testDir = "C:\Users\yawang\$suite"
+$testDir = "$env:temp\$suite"
 . $PSScriptRoot\common.ps1 -suite $suite -TestDir $testDir
 Import-Module "$Script:SSHBinaryPath\OpenSSHUtils" -force
 Describe "Tests for ssh config" -Tags "CI" {
