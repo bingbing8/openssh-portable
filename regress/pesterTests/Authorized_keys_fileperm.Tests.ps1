@@ -5,7 +5,7 @@ $suite = "authorized_keys_fileperm"
 $testDir = "$env:temp\$suite"
 . $PSScriptRoot\common.ps1 -suite $suite -TestDir $testDir
 Import-Module "$Script:SSHBinaryPath\OpenSSHUtils" -force
-Describe "Tests for authorized_keys file permission" -Tags "CI" {
+Describe "Tests for authorized_keys file permission" -Tags "Scenario" {
     BeforeAll {
         $sshLogName = "test.txt"
         $sshdLogName = "sshdlog.txt"
