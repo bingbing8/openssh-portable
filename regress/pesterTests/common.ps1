@@ -9,7 +9,7 @@ $Script:Known_host_file = $null
 
 function Find-OpenSSHBinPath
 {
-    param([string]$Configuration = "Release")
+    param([string]$Configuration = "Debug")
 
     [string] $NativeHostArch = $env:PROCESSOR_ARCHITECTURE
     if($NativeHostArch -ieq 'x86')

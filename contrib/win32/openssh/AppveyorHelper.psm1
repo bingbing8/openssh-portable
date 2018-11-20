@@ -97,7 +97,7 @@ function Invoke-AppVeyorFull
 function Invoke-AppVeyorBuild
 {
       Set-BuildVariable TestPassed True
-      Start-OpenSSHBuild -Configuration Release -NativeHostArch x64
+      Start-OpenSSHBuild -Configuration Debug -NativeHostArch x64
       Start-OpenSSHBuild -Configuration Release -NativeHostArch x86
       Write-BuildMessage -Message "OpenSSH binaries build success!" -Category Information
 }
