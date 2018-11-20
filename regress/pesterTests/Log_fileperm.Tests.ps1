@@ -1,41 +1,31 @@
 ﻿If ($PSVersiontable.PSVersion.Major -le 2) {$PSScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path}
-Import-Module $PSScriptRoot\CommonUtils.psm1 -Force
 $tC = 1
 $tI = 0
 $suite = "log_fileperm"
-
+$testDir = "$env:temp\$suite"
+. $PSScriptRoot\common.ps1 -suite $suite -TestDir $testDir
+Import-Module "$Script:SSHBinaryPath\OpenSSHUtils" -force
 Describe "Tests for log file permission" -Tags "CI" {
-    BeforeAll {
-        if($OpenSSHTestInfo -eq $null)
-        {
-            Throw "`$OpenSSHTestInfo is null. Please run Setup-OpenSSHTestEnvironment to setup test environment."
-        }
-        
-        $testDir = "$($OpenSSHTestInfo["TestDataPath"])\$suite"
-        if( -not (Test-path $testDir -PathType Container))
-        {
-            $null = New-Item $testDir -ItemType directory -Force -ErrorAction SilentlyContinue
-        }
-        $port = 47003
-        $logName = "log.txt"        
+    BeforeAll {        
+        $port = 47002
+        $logName = "log.txt"
+        $server = "localhost"
+        $ssh_config_file = "$testDir\ssh_config"
         
         $systemSid = Get-UserSID -WellKnownSidType ([System.Security.Principal.WellKnownSidType]::LocalSystemSid)
         $adminsSid = Get-UserSID -WellKnownSidType ([System.Security.Principal.WellKnownSidType]::BuiltinAdministratorsSid)                        
         $currentUserSid = Get-UserSID -User "$($env:USERDOMAIN)\$($env:USERNAME)"        
 
         Remove-Item (Join-Path $testDir "*$logName") -Force -ErrorAction SilentlyContinue
-        
-        $platform = Get-Platform
-        if(($platform -eq [PlatformType]::Windows) -and ($psversiontable.BuildVersion.Major -le 6))
-        {
-            #suppress the firewall blocking dialogue on win7
-            netsh advfirewall firewall add rule name="sshd" program="$($OpenSSHTestInfo['OpenSSHBinPath'])\sshd.exe" protocol=any action=allow dir=in
-        }
-
         #only validate owner and ACEs of the file
         function ValidateLogFilePerm {
             param([string]$FilePath)
-            
+            $num = 0
+            while((-not (Test-Path $FilePath -PathType leaf)) -and ($num++ -lt 20))
+            {
+                Start-Sleep -Milliseconds 1000
+            }
+
             $myACL = Get-ACL $FilePath
             $currentOwnerSid = Get-UserSid -User $myACL.Owner
             $currentOwnerSid.Equals($currentUserSid) | Should Be $true
@@ -83,29 +73,18 @@ Describe "Tests for log file permission" -Tags "CI" {
     }
 
     AfterEach {$tI++;}
-    AfterAll {
-        if(($platform -eq [PlatformType]::Windows) -and ($psversiontable.BuildVersion.Major -le 6))
-        {            
-            netsh advfirewall firewall delete rule name="sshd" program="$($OpenSSHTestInfo['OpenSSHBinPath'])\sshd.exe" protocol=any dir=in
-        }    
-    }
 
     Context "$tC-SSHD -E Log file permission" {
-        BeforeAll {            
-            Get-Process -Name sshd  -ErrorAction SilentlyContinue | Where-Object {$_.SessionID -ne 0} | Stop-process -force -ErrorAction SilentlyContinue
-            $tI=1
-        }
+        BeforeAll { $tI=1 }
         
         AfterAll {
             $tC++
+            Clear-TestCommons
         }
 
         It "$tC.$tI-SSHD -E Log file permission" {
-            #Run
-            Start-Process -FilePath sshd.exe -WorkingDirectory $($OpenSSHTestInfo['OpenSSHBinPath']) -ArgumentList @("-d", "-p $port", "-E $logPath") -NoNewWindow
-            Start-sleep 1; 
+            Start-SSHDDaemon -port $port -ExtraArglist "-E $logPath"
             ValidateLogFilePerm -FilePath $logPath
-            Get-Process -Name sshd  -ErrorAction SilentlyContinue | Where-Object {$_.SessionID -ne 0} | Stop-process -force -ErrorAction SilentlyContinue
         }
     }
 }

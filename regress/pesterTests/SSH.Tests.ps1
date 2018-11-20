@@ -1,78 +1,29 @@
 ﻿If ($PSVersiontable.PSVersion.Major -le 2) {$PSScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path}
-Import-Module $PSScriptRoot\CommonUtils.psm1 -Force
+
 #todo: -i -q -v -l -c -C
 #todo: -S -F -V -e
 $tC = 1
 $tI = 0
 $suite = "sshclient"
-        
+$testDir = "$env:temp\$suite"
+. $PSScriptRoot\common.ps1 -suite $suite -TestDir $testDir
+
 Describe "E2E scenarios for ssh client" -Tags "CI" {
-    BeforeAll {        
-        if($OpenSSHTestInfo -eq $null)
-        {
-            Throw "`$OpenSSHTestInfo is null. Please run Set-OpenSSHTestEnvironment to set test environments."
-        }
+    BeforeAll {
+        $port = 47002
+        $server = "localhost"
+        $user_key_type = "ed25519"
+        $user_key_file = "$testDir\user_key_$user_key_type"
+        $ssh_config_file = "$testDir\ssh_config"
 
-        $server = $OpenSSHTestInfo["Target"]
-        $port = $OpenSSHTestInfo["Port"]
-        $ssouser = $OpenSSHTestInfo["SSOUser"]
-
-        $testDir = Join-Path $OpenSSHTestInfo["TestDataPath"] $suite
-        if(-not (Test-Path $testDir))
-        {
-            $null = New-Item $testDir -ItemType directory -Force -ErrorAction SilentlyContinue
-        }
-        $acl = Get-Acl $testDir
-        $rights = [System.Security.AccessControl.FileSystemRights]"Read, Write"
-        $accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule($ssouser, $rights, "ContainerInherit,Objectinherit", "None", "Allow")
-        $acl.SetAccessRule($accessRule)
-        Set-Acl -Path $testDir -AclObject $acl
-        $platform = Get-Platform
-        #skip on ps 2 becase non-interactive cmd require a ENTER before it returns on ps2
-        $skip = ($platform -eq [PlatformType]::Windows) -and ($PSVersionTable.PSVersion.Major -le 2)
-
-        <#$testData = @(
-            @{
-                Title = 'Simple logon no option';                
-                LogonStr = "$($server.localAdminUserName)@$($server.MachineName)"
-                Options = ""
-            },
-            @{
-                Title = 'Simple logon using -C -l option'
-                LogonStr = $server.MachineName
-                Options = "-C -l $($server.localAdminUserName)"
-            }
-        )
+        #other default vars: -TargetName "test_target" -user_key_type "ed25519"
+        Set-TestCommons -port $port -Server $server -user_key_file $user_key_file -ssh_config_file $ssh_config_file
         
-        $testData1 = @(
-            @{
-                Title = "logon using -i -q option"
-                LogonStr = "$($server.localAdminUserName)@$($server.MachineName)"
-                Options = '-i $identifyFile -q'
-            },
-            @{
-                Title = "logon using -i option"
-                LogonStr = "$($server.localAdminUserName)@$($server.MachineName)"
-                Options = '-i $identifyFile'
-            },
-            @{
-                Title = "logon using -i -c  option"
-                LogonStr = "$($server.localAdminUserName)@$($server.MachineName)"
-                Options = '-i $identifyFile -c aes256-ctr'
-            },
-             -V does not redirect to file
-            @{
-                Title = "logon using -i -V option"
-                LogonStr = "$($server.localAdminUserName)@$($server.MachineName)"
-                Options = '-i $identifyFile -V'
-                SkipVerification = $true
-            },
-            @{
-                Title = 'logon using -i -l option'
-                LogonStr = $server.MachineName
-                Options = '-i $identifyFile -l $($server.localAdminUserName)'
-            }
-        )#>
+        $known_host = $Script:Known_host_file
+
+        #skip on ps 2 becase non-interactive cmd require a ENTER before it returns on ps2
+        $skip = $PSVersionTable.PSVersion.Major -le 2
+
         $dfltShellRegPath = "HKLM:\Software\OpenSSH"
         $dfltShellRegKeyName = "DefaultShell"
         $dfltShellCmdOptionRegKeyName = "DefaultShellCommandOption"
@@ -100,9 +51,13 @@ Describe "E2E scenarios for ssh client" -Tags "CI" {
         $stderrFile=Join-Path $testDir "$tC.$tI.stderr.txt"
         $stdoutFile=Join-Path $testDir "$tC.$tI.stdout.txt"
         $logFile = Join-Path $testDir "$tC.$tI.log.txt"
-    }        
+    }
 
     AfterEach {$tI++;}
+
+    AfterAll {
+        Clear-TestCommons
+    }
 
    Context "$tC - Basic Scenarios" {
         
@@ -111,27 +66,26 @@ Describe "E2E scenarios for ssh client" -Tags "CI" {
 
         It "$tC.$tI - test version" {
             iex "cmd /c `"ssh -V 2> $stderrFile`""
-            $stderrFile | Should Contain "OpenSSH_for_Windows"
+            $stderrFile | Should -FileContentMatch "OpenSSH_for_Windows *"
         }
 
         It "$tC.$tI - test help" {
             iex "cmd /c `"ssh -? 2> $stderrFile`""
-            $stderrFile | Should Contain "usage: ssh"
+            $stderrFile | Should -FileContentMatch "usage: ssh *"
         }
         
         It "$tC.$tI - remote echo command" {
-            iex "$sshDefaultCmd echo 1234" | Should Be "1234"
+            iex "ssh -F $ssh_config_file test_target echo 1234" | Should Be "1234"
         }
-
     }
-    
+
     Context "$tC - exit code (exit-status.sh)" {
         BeforeAll {$tI=1}
         AfterAll{$tC++}
 
         It "$tC.$tI - various exit codes" {
             foreach ($i in (0,1,4,5,44)) {
-                ssh -p $port $ssouser@$server exit $i
+                ssh -F $ssh_config_file test_target exit $i
                 $LASTEXITCODE | Should Be $i
             }            
         }
@@ -143,18 +97,18 @@ Describe "E2E scenarios for ssh client" -Tags "CI" {
         AfterAll{$tC++}
 
         It "$tC.$tI - stdout to file" -skip:$skip {
-            ssh test_target powershell get-process > $stdoutFile
-            $stdoutFile | Should Contain "ProcessName"
+            ssh -F $ssh_config_file test_target powershell get-process > $stdoutFile
+            $stdoutFile | Should -FileContentMatch "ProcessName"
         }
 
         It "$tC.$tI - stdout to PS object" {
-            $o = ssh test_target echo 1234
+            $o = ssh -F $ssh_config_file test_target echo 1234
             $o | Should Be "1234"
         }
 
         It "$tC.$tI - multiple double quotes in cmdline" {
             # actual command line ssh target \"cmd\" /c \"echo hello\"
-            $o = ssh test_target `\`"cmd`\`" /c `\`"echo hello`\`"
+            $o = ssh -F $ssh_config_file test_target `\`"cmd`\`" /c `\`"echo hello`\`"
             $o | Should Be "hello"
         }
 
@@ -164,7 +118,7 @@ Describe "E2E scenarios for ssh client" -Tags "CI" {
             $EncodedText =[Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($str))
             $h = "hello123"
             # ignore error stream using 2> $null
-            $o = $h | ssh test_target PowerShell -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -EncodedCommand $EncodedText 2> $null
+            $o = $h | ssh -F $ssh_config_file test_target PowerShell -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -EncodedCommand $EncodedText 2> $null
             $o | Should Be "8"
         }
 
@@ -182,18 +136,18 @@ Describe "E2E scenarios for ssh client" -Tags "CI" {
             $str = "begin {} process { Add-Content -Encoding Ascii -path $testdst1 -Value ([string]`$input)} end { }"
             $EncodedText =[Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($str))
             # ignore error stream using 2> $null
-            get-content $testsrc | ssh test_target PowerShell -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -EncodedCommand $EncodedText 2> $null
+            get-content $testsrc | ssh -F $ssh_config_file test_target PowerShell -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -EncodedCommand $EncodedText 2> $null
             (dir $testdst1).Length | Should Be (dir $testsrc).Length
 
             # stream file from remote to local
             $testdst2 = Join-Path $testDir "$tC.$tI.testdst2"
             $null | Set-Content $testdst2
-            (ssh test_target powershell get-content $testdst1 -Encoding Ascii) | Set-Content $testdst2 -Encoding ASCII
+            (ssh -F $ssh_config_file test_target powershell get-content $testdst1 -Encoding Ascii) | Set-Content $testdst2 -Encoding ASCII
             (dir $testdst2).Length | Should Be (dir $testsrc).Length
 
         }
     }
-    
+
     Context "$tC - configure powershell default shell Scenarios" {
         BeforeAll {
             $tI=1
@@ -209,30 +163,30 @@ Describe "E2E scenarios for ssh client" -Tags "CI" {
         }        
 
         It "$tC.$tI - basic powershell" -skip:$skip {
-            $o = ssh test_target Write-Output 1234
+            $o = ssh -F $ssh_config_file test_target Write-Output 1234
             $o | Should Be "1234"
         }
-        
+
         It "$tC.$tI - basic in powershell cmdlet" -skip:$skip {
-            $o = ssh test_target "cd `$env:ProgramFiles;pwd"
+            $o = ssh -F $ssh_config_file test_target "cd `$env:ProgramFiles;pwd"
             $LASTEXITCODE | Should Be 0
             #$o | Should Match "c:\Program Files"
         }
         It "$tC.$tI - powershell as default shell and double quotes in cmdline" {
             # actual command line ssh target echo `"hello`"
-            $o = ssh test_target echo ``\`"hello``\`"
+            $o = ssh -F $ssh_config_file test_target echo "``\`"hello``\`""
             $o | Should Be "`"hello`""
         }
         It "$tC.$tI - multiple commands with double quotes in powershell cmdlet" -skip:$skip {
             # actual command line ssh target cd "$env:programfiles";pwd
-            $o = ssh test_target "cd \`"`$env:programfiles\`";pwd"
+            $o = ssh -F $ssh_config_file test_target "cd \`"`$env:programfiles\`";pwd"
             $LASTEXITCODE | Should Be 0
             $match = $o -match "Program Files"
             $match.count | Should be 1
         }
         It "$tC.$tI - multiple commands with double quotes in powershell cmdlet" -skip:$skip {
             # actual command line ssh target dir "$env:programfiles";cd "$env:programfiles";pwd
-            $o = ssh test_target "dir \`"`$env:programfiles\`";cd \`"`$env:programfiles\`";pwd"
+            $o = ssh -F $ssh_config_file test_target "dir \`"`$env:programfiles\`";cd \`"`$env:programfiles\`";pwd"
             $LASTEXITCODE | Should Be 0
             #$o -contains "Program Files" | Should Be $True
             $match = $o -match "Program Files"
@@ -240,8 +194,8 @@ Describe "E2E scenarios for ssh client" -Tags "CI" {
         }
         It "$tC.$tI - single quotes in powershell cmdlet" -skip:$skip {
             # actual command line ssh target echo '$env:computername'
-            $o = ssh test_target "echo '`$env:computername'"
-            $LASTEXITCODE | Should Be 0            
+            $o = ssh -F $ssh_config_file test_target "echo '`$env:computername'"
+            $LASTEXITCODE | Should Be 0
             $o | Should Be `$env:computername
         }
     }
@@ -258,18 +212,18 @@ Describe "E2E scenarios for ssh client" -Tags "CI" {
             Remove-ItemProperty -Path $dfltShellRegPath -Name $dfltShellRegKeyName -ErrorAction SilentlyContinue
             Remove-ItemProperty -Path $dfltShellRegPath -Name $dfltShellCmdOptionRegKeyName -ErrorAction SilentlyContinue
         }
-        It "$tC.$tI - default shell as cmd" -skip:$skip {            
-            $o = ssh test_target where cmd
-            $o | Should Contain "cmd"            
+        It "$tC.$tI - default shell as cmd" -skip:$skip {
+            $o = ssh -F $ssh_config_file test_target where cmd
+            $o | Should -BeLike "*cmd*"
         }
         It "$tC.$tI - cmd as default shell and double quotes in cmdline" {
             # actual command line ssh target echo "\"hello\""
-            $o = ssh test_target 'echo "\"hello\""'
+            $o = ssh -F $ssh_config_file test_target 'echo "\"hello\""'
             $o | Should Be "`"hello`""
         }
         It "$tC.$tI - single quotes in powershell cmdlet" -skip:$skip {
             # actual command line ssh target echo '$env:computername'
-            $o = ssh test_target "echo 'hello'"
+            $o = ssh -F $ssh_config_file test_target "echo 'hello'"
             $LASTEXITCODE | Should Be 0            
             $o | Should Be "'hello'"
         }
@@ -287,33 +241,32 @@ Describe "E2E scenarios for ssh client" -Tags "CI" {
         }
         It "$tC.$tI - shellhost as default shell and multiple double quotes in cmdline" {
             # actual command line ssh target \"cmd\" /c \"echo \"hello\"\"
-            $o = ssh test_target `\`"cmd`\`" /c `\`"echo \`"hello\`"`\`"
+            $o = ssh -F $ssh_config_file test_target `\`"cmd`\`" /c `\`"echo \`"hello\`"`\`"
             $o | Should Be "`"hello`""
         }
     }
-    
-    Context "$tC - cmdline parameters" {        
+
+    Context "$tC - cmdline parameters" {
         BeforeAll {$tI=1}
         AfterAll{$tC++}
 
         It "$tC.$tI - verbose to file (-v -E)" {
-            $o = ssh -v -E $logFile test_target echo 1234
+            $o = ssh -v -E $logFile -F $ssh_config_file test_target echo 1234
             $o | Should Be "1234"
             #TODO - checks below are very inefficient (time taking). 
-            $logFile | Should Contain "OpenSSH_"
-            $logFile | Should Contain "Exit Status 0"
+            $logFile | Should -FileContentMatch "OpenSSH_"
+            $logFile | Should -FileContentMatch "Exit Status 0"
         }
-
 
         It "$tC.$tI - cipher options (-c)" {
             #bad cipher
-            iex "cmd /c `"ssh -c bad_cipher test_target echo 1234 2>$stderrFile`""
-            $stderrFile | Should Contain "Unknown cipher type"
+            iex "cmd /c `"ssh -c bad_cipher -F $ssh_config_file test_target echo 1234 2>$stderrFile`""
+            $stderrFile | Should -FileContentMatch "Unknown cipher type"
             #good cipher, ensure cipher is used from debug logs
-            $o = ssh -c aes256-ctr  -v -E $logFile test_target echo 1234
+            $o = ssh -c aes256-ctr  -v -E $logFile -F $ssh_config_file test_target echo 1234
             $o | Should Be "1234"
-            $logFile | Should Contain "kex: server->client cipher: aes256-ctr"
-            $logFile | Should Contain "kex: client->server cipher: aes256-ctr"
+            $logFile | Should -FileContentMatch "kex: server->client cipher: aes256-ctr"
+            $logFile | Should -FileContentMatch "kex: client->server cipher: aes256-ctr"
         }
 
         It "$tC.$tI - ssh_config (-F)" {
@@ -321,9 +274,9 @@ Describe "E2E scenarios for ssh client" -Tags "CI" {
             $badConfigFile = Join-Path $testDir "$tC.$tI.bad_ssh_config"
             "bad_config_line" | Set-Content $badConfigFile
             iex "cmd /c `"ssh -F $badConfigFile test_target echo 1234 2>$stderrFile`""
-            $stderrFile | Should Contain "bad_ssh_config"
-            $stderrFile | Should Contain "bad_config_line"
-            $stderrFile | Should Contain "bad configuration options"
+            $stderrFile | Should -FileContentMatch "bad_ssh_config"
+            $stderrFile | Should -FileContentMatch "bad_config_line"
+            $stderrFile | Should -FileContentMatch "bad configuration options"
 
             #try with a proper configuration file. Put it on a unicode path with unicode content
             #so we can test the Unicode support simultaneously
@@ -332,7 +285,8 @@ Describe "E2E scenarios for ssh client" -Tags "CI" {
             "Host myhost" | Add-Content $goodConfigFile
             "    HostName $server" | Add-Content $goodConfigFile
             "    Port $port" | Add-Content $goodConfigFile
-            "    User $ssouser" | Add-Content $goodConfigFile
+            "    IdentityFile $user_key_file" | Add-Content $goodConfigFile
+            "    UserKnownHostsFile $known_host" | Add-Content $goodConfigFile
             $o = ssh -F $goodConfigFile myhost echo 1234
             $o | Should Be "1234"          
         }
@@ -341,36 +295,34 @@ Describe "E2E scenarios for ssh client" -Tags "CI" {
             # TODO - this test assumes target is localhost. 
             # make it work independent of target
             #-4
-            $o = ssh -4 -v -E $logFile test_target echo 1234
+            $o = ssh -4 -v -E $logFile -F $ssh_config_file test_target echo 1234
             $o | Should Be "1234"
-            $logFile | Should Contain "[127.0.0.1]"
+            $logFile | Should -FileContentMatch "[127.0.0.1]"
             #-4
-            $o = ssh -6 -v -E $logFile test_target echo 1234
+            $o = ssh -6 -v -E $logFile -F $ssh_config_file test_target echo 1234
             $o | Should Be "1234"
-            $logFile | Should Contain "[::1]"            
+            $logFile | Should -FileContentMatch "[::1]"
         }
 
         It "$tC.$tI - auto populate known hosts" {
             
             $kh = Join-Path $testDir "$tC.$tI.known_hosts"
-            $nul | Set-Content $kh
+            $null | Set-Content $kh
             # doing via cmd to intercept and drain stderr output
-            iex "cmd /c `"ssh -o UserKnownHostsFile=`"$kh`" -o StrictHostKeyChecking=no test_target hostname 2>&1`""
+            iex "cmd /c `"ssh -o UserKnownHostsFile=`"$kh`" -o StrictHostKeyChecking=no -F $ssh_config_file test_target hostname 2>&1`""
             @(Get-Content $kh).Count | Should Be 1
         }
 
         It "ProxyCommand with file name only" {            
             & cmd /c "ssh -o ProxyCommand=`"cmd.exe /c echo test string for invalid proxy 1>&2`" abc 2>$stderrFile"
-            $stderrFile | Should Contain "test string for invalid proxy"
-            write-host (Get-Content $stderrFile)
-            $stderrFile | Should Contain "Connection closed by remote host"
+            $stderrFile | Should -FileContentMatch "test string for invalid proxy"
+            #$stderrFile | Should -FileContentMatch "Connection closed by remote host"
         }
 
         It "ProxyCommand with absolute path to the file" {
             & cmd /c "ssh -o ProxyCommand=`"$($env:ComSpec) /c echo test string for invalid proxy 1>&2`" abc 2>$stderrFile"
-            $stderrFile | Should Contain "test string for invalid proxy"
-            write-host  (Get-Content $stderrFile)
-            $stderrFile | Should Contain "Connection closed by remote host"
+            $stderrFile | Should -FileContentMatch "test string for invalid proxy"
+            #$stderrFile | Should -FileContentMatch "Connection closed by remote host"
         }
-    }    
+    }
 }

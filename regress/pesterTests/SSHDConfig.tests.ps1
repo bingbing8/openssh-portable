@@ -1,9 +1,8 @@
 ﻿If ($PSVersiontable.PSVersion.Major -le 2) {$PSScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path}
-Import-Module $PSScriptRoot\CommonUtils.psm1 -Force
 $tC = 1
 $tI = 0
 $suite = "sshdConfig"
-Describe "Tests of sshd_config" -Tags "CI" {
+Describe "Tests of sshd_config" -Tags "Scenario" {
     BeforeAll {
         if($OpenSSHTestInfo -eq $null)
         {
@@ -120,21 +119,12 @@ Describe "Tests of sshd_config" -Tags "CI" {
         {
             Stop-SSHDTestDaemon
         }
-        if(($platform -eq [PlatformType]::Windows) -and ([Environment]::OSVersion.Version.Major -le 6))
-        {
-            #suppress the firewall blocking dialogue on win7
-            netsh advfirewall firewall add rule name="sshd" program="$($OpenSSHTestInfo['OpenSSHBinPath'])\sshd.exe" protocol=any action=allow dir=in
-        }
     }
 
     AfterEach { $tI++ }
     
     AfterAll {        
         $PrincipalContext.Dispose()
-        if(($platform -eq [PlatformType]::Windows) -and ($psversiontable.BuildVersion.Major -le 6))
-        {            
-            netsh advfirewall firewall delete rule name="sshd" program="$($OpenSSHTestInfo['OpenSSHBinPath'])\sshd.exe" protocol=any dir=in
-        }    
     }
 
 <#
