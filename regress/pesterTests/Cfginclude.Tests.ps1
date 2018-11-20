@@ -25,7 +25,7 @@ Describe "Tests for ssh config" -Tags "CI" {
             $userConfigFile = "$testDir\ssh_config"
             
             Set-TestCommons -port $port -Server $server -ssh_config_file $userConfigFile
-			Write-Host Get-Process -name sshd
+			Write-Host (Get-Process -name sshd | Out-String)
             Enable-Privilege SeRestorePrivilege | out-null
             $oldACL = Get-ACL $userConfigFile
             $tI=1
@@ -108,7 +108,7 @@ Describe "Tests for ssh config" -Tags "CI" {
             $o = ssh -F $userConfigFile test_target echo 1234
             $o | Should Be "1234"
 			Write-Host "finish $tC.$tI"
-			Write-Host (Get-Process -name sshd)
+			Write-Host (Get-Process -name sshd | Out-String)
         }
 
         It "$tC.$tI-User SSHConfig-ReadConfig positive (local system is the owner)" {
@@ -120,7 +120,7 @@ Describe "Tests for ssh config" -Tags "CI" {
             $o = ssh -F $userConfigFile test_target echo 1234
             $o | Should Be "1234"
 			Write-Host "finish $tC.$tI"
-			Write-Host (Get-Process -name sshd)
+			Write-Host (Get-Process -name sshd | Out-String)
         }
 
         It "$tC.$tI-User SSHConfig-ReadConfig positive (admin is the owner and current user has no explict ACE)" {
@@ -133,7 +133,7 @@ Describe "Tests for ssh config" -Tags "CI" {
             $o = ssh -F $userConfigFile test_target echo 1234
             $o | Should Be "1234"
 			Write-Host "finish $tC.$tI"
-			Write-Host (Get-Process -name sshd)
+			Write-Host (Get-Process -name sshd | Out-String)
         }
 
         It "$tC.$tI-User SSHConfig-ReadConfig positive (admin is the owner and current user has explict ACE)" {
@@ -145,7 +145,7 @@ Describe "Tests for ssh config" -Tags "CI" {
             $o = ssh -F $userConfigFile test_target echo 1234
             $o | Should Be "1234"
 			Write-Host "finish $tC.$tI"
-			Write-Host (Get-Process -name sshd)
+			Write-Host (Get-Process -name sshd | Out-String)
         }
 
         <#It "$tC.$tI-User SSHConfig-ReadConfig negative (wrong owner)" {
