@@ -1,12 +1,12 @@
 ﻿$ErrorActionPreference = 'Stop'
 Set-StrictMode -Version 2.0
 If ($PSVersiontable.PSVersion.Major -le 2) {$PSScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path}
-Import-Module $PSScriptRoot\OpenSSHCommonUtils.psm1 -Force
 Import-Module $PSScriptRoot\OpenSSHBuildHelper.psm1 -Force
-Import-Module $PSScriptRoot\OpenSSHTestHelper.psm1 -Force
 
-$repoRoot = Get-RepositoryRoot
-$script:messageFile = join-path $repoRoot.FullName "BuildMessage.log"
+$script:messageFile = join-path $env:temp "BuildMessage.log"
+$Script:TestResultsDir = "$env:temp\OpenSSHTestResults\"
+$Script:E2EResult = "$Script:TestResultsDir\E2Eresult.xml"
+$Script:UnitTestResult = "$Script:TestResultsDir\UnittestTestResult.txt"
 
 # Write the build message
 Function Write-BuildMessage
@@ -16,7 +16,7 @@ Function Write-BuildMessage
         [ValidateNotNullOrEmpty()]
         [string] $Message,
         $Category,
-        [string]  $Details)
+        [string]$Details)
 
     if($env:AppVeyor)
     {
@@ -82,7 +82,6 @@ function Invoke-AppVeyorFull
     try {        
         Invoke-AppVeyorBuild
         Install-OpenSSH
-        Set-OpenSSHTestEnvironment -confirm:$false
         Invoke-OpenSSHTests
         Publish-Artifact
     }
@@ -137,96 +136,21 @@ function Add-BuildLog
     }
 }
 
-<#
-    .Synopsis
-    Deploy all required files to a location and install the binaries
-#>
-function Install-OpenSSH
+function Install-Pester
 {
-    [CmdletBinding()]
-    param
-    ( 
-        [ValidateSet('Debug', 'Release')]
-        [string]$Configuration = "Release",
-
-        [ValidateSet('x86', 'x64', '')]
-        [string]$NativeHostArch = "",
-
-        [string]$OpenSSHDir = "$env:SystemDrive\OpenSSH"
-    )
-
-    if ($NativeHostArch -eq "") 
+	Write-BuildMessage -Message "install pester"
+	# Install chocolatey
+    if(-not (Get-Command "choco" -ErrorAction SilentlyContinue))
     {
-        $NativeHostArch = 'x64'
-        if ($env:PROCESSOR_ARCHITECTURE  -eq 'x86') {
-            $NativeHostArch = 'x86'
-        }
+        Invoke-Expression ((new-object net.webclient).DownloadString('https://chocolatey.org/install.ps1'))
     }
-    UnInstall-OpenSSH -OpenSSHDir $OpenSSHDir
 
-    Start-OpenSSHPackage -NativeHostArch $NativeHostArch -Configuration $Configuration -DestinationPath $OpenSSHDir
-
-    Push-Location $OpenSSHDir 
-    & "$OpenSSHDir\install-sshd.ps1"
-
-    $machinePath = [Environment]::GetEnvironmentVariable('Path', 'MACHINE')
-    $newMachineEnvironmentPath = $machinePath
-    if (-not ($machinePath.ToLower().Contains($OpenSSHDir.ToLower())))
+    $isModuleAvailable = Get-Module 'Pester' -ListAvailable
+    if (-not ($isModuleAvailable))
     {
-        $newMachineEnvironmentPath = "$OpenSSHDir;$newMachineEnvironmentPath"
-        $env:Path = "$OpenSSHDir;$env:Path"
+        Write-BuildMessage -Message "Installing Pester..." -Category Information
+        choco install Pester -y --force --limitoutput 2>&1 >> $env:temp\pesterInstallLog.txt
     }
-    # Update machine environment path
-    if ($newMachineEnvironmentPath -ne $machinePath)
-    {
-        [Environment]::SetEnvironmentVariable('Path', $newMachineEnvironmentPath, 'MACHINE')
-    }
-    
-    Start-Service -Name sshd 
-    Start-Service -Name ssh-agent
-
-    Pop-Location
-    Write-BuildMessage -Message "OpenSSH installed!" -Category Information
-}
-
-<#
-    .Synopsis
-    uninstalled sshd
-#>
-function UnInstall-OpenSSH
-{
-    [CmdletBinding()]
-    param
-    ( 
-        [string]$OpenSSHDir = "$env:SystemDrive\OpenSSH"
-    )
-
-    if (-not (Test-Path $OpenSSHDir -PathType Container))
-    {
-        return
-    }
-
-    Push-Location $OpenSSHDir
-    if((Get-Service ssh-agent -ErrorAction SilentlyContinue) -ne $null) {
-        Stop-Service ssh-agent -Force
-    }
-    & "$OpenSSHDir\uninstall-sshd.ps1"
-        
-    $machinePath = [Environment]::GetEnvironmentVariable('Path', 'MACHINE')
-    $newMachineEnvironmentPath = $machinePath
-    if ($machinePath.ToLower().Contains($OpenSSHDir.ToLower()))
-    {        
-        $newMachineEnvironmentPath = $newMachineEnvironmentPath.Replace("$OpenSSHDir;", '')
-        $env:Path = $env:Path.Replace("$OpenSSHDir;", '')
-    }
-    
-    if ($newMachineEnvironmentPath -ne $machinePath)
-    {
-        [Environment]::SetEnvironmentVariable('Path', $newMachineEnvironmentPath, 'MACHINE')
-    }
-    
-    Pop-Location
-    Remove-Item -Path $OpenSSHDir -Recurse -Force -ErrorAction SilentlyContinue    
 }
 
 <#
@@ -244,7 +168,7 @@ function Add-Artifact
         [ValidateNotNull()]
         [System.Collections.ArrayList] $artifacts,
         [string] $FileToAdd
-    )        
+    )
     
     if ([string]::IsNullOrEmpty($FileToAdd) -or (-not (Test-Path $FileToAdd -PathType Leaf)) )
     {            
@@ -266,17 +190,12 @@ function Publish-Artifact
     [System.Collections.ArrayList] $artifacts = new-object System.Collections.ArrayList
     
     # Get the build.log file for each build configuration        
-    Add-BuildLog -artifacts $artifacts -buildLog (Get-BuildLogFile -root $repoRoot.FullName -Configuration Release -NativeHostArch x64)
-    Add-BuildLog -artifacts $artifacts -buildLog (Get-BuildLogFile -root $repoRoot.FullName -Configuration Release -NativeHostArch x86)
+    Add-BuildLog -artifacts $artifacts -buildLog (Get-BuildLogFile -root $env:APPVEYOR_BUILD_FOLDER -Configuration Release -NativeHostArch x64)
+    Add-BuildLog -artifacts $artifacts -buildLog (Get-BuildLogFile -root $env:APPVEYOR_BUILD_FOLDER -Configuration Release -NativeHostArch x86)
 
-    if($Global:OpenSSHTestInfo)
-    {
-        Add-Artifact -artifacts $artifacts -FileToAdd $Global:OpenSSHTestInfo["SetupTestResultsFile"]
-        Add-Artifact -artifacts $artifacts -FileToAdd $Global:OpenSSHTestInfo["UnitTestResultsFile"]
-        Add-Artifact -artifacts $artifacts -FileToAdd $Global:OpenSSHTestInfo["E2ETestResultsFile"]
-        Add-Artifact -artifacts $artifacts -FileToAdd $Global:OpenSSHTestInfo["UninstallTestResultsFile"]
-        Add-Artifact -artifacts $artifacts -FileToAdd $Global:OpenSSHTestInfo["TestSetupLogFile"]
-    }
+
+    Add-Artifact -artifacts $artifacts -FileToAdd $Script:E2EResult
+    Add-Artifact -artifacts $artifacts -FileToAdd $Script:UnitTestResult
     
     foreach ($artifact in $artifacts)
     {
@@ -291,80 +210,35 @@ function Publish-Artifact
 #>
 function Invoke-OpenSSHTests
 {
-    Set-BasicTestInfo -Confirm:$false
-    Invoke-OpenSSHSetupTest
-    if (($OpenSSHTestInfo -eq $null) -or (-not (Test-Path $OpenSSHTestInfo["SetupTestResultsFile"])))
-    {
-        Write-Warning "Test result file $OpenSSHTestInfo["SetupTestResultsFile"] not found after tests."
-        Write-BuildMessage -Message "Test result file $OpenSSHTestInfo["SetupTestResultsFile"] not found after tests." -Category Error
-        Set-BuildVariable TestPassed False
-        Write-Warning "Stop running further tests!"
-        return
+    if(-not (Test-Path $Script:TestResultsDir -PathType Container)) {
+        New-Item $Script:TestResultsDir -ItemType Directory -Force -ErrorAction SilentlyContinue| Out-Null
     }
-    $xml = [xml](Get-Content $OpenSSHTestInfo["SetupTestResultsFile"] | out-string)
+    Invoke-OpenSSHUnitTests
+    Invoke-OpenSSHE2ETests
+}
+
+<#
+      .Synopsis
+      Runs E2E pester tests for this repo
+#>
+function Invoke-OpenSSHE2ETests
+{
+	Import-Module pester -force -global
+    Write-BuildMessage -Message "Running OpenSSH tests..." -Category Information
+    Push-Location "$env:APPVEYOR_BUILD_FOLDER\regress\pesterTests"
+    #only ssh tests for now
+    $testFolders = @(Get-ChildItem *.tests.ps1 -Recurse | ForEach-Object{ Split-Path $_.FullName} | Sort-Object -Unique)
+    
+    Invoke-Pester $testFolders -OutputFormat NUnitXml -OutputFile $Script:E2EResult -Tag 'CI' -PassThru
+    Pop-Location
+
+    $xml = [xml](Get-Content $Script:E2EResult | out-string)
     if ([int]$xml.'test-results'.failures -gt 0) 
     {
-        $errorMessage = "$($xml.'test-results'.failures) setup tests in regress\pesterTests failed. Detail test log is at $($OpenSSHTestInfo["SetupTestResultsFile"])."
-        Write-Warning $errorMessage
+        $errorMessage = "$($xml.'test-results'.failures) setup tests in regress\pesterTests failed. Detail test log is at $Script:E2EResult."
         Write-BuildMessage -Message $errorMessage -Category Error
         Set-BuildVariable TestPassed False
-        Write-Warning "Stop running further tests!"
         return
-    }
-
-    Write-Host "Start running unit tests"
-    $unitTestFailed = Invoke-OpenSSHUnitTest
-
-    if($unitTestFailed)
-    {
-        Write-Host "At least one of the unit tests failed!" -ForegroundColor Yellow
-        Write-BuildMessage "At least one of the unit tests failed!" -Category Error
-        Set-BuildVariable TestPassed False
-    }
-    else
-    {
-        Write-Host "All Unit tests passed!"
-        Write-BuildMessage -Message "All Unit tests passed!" -Category Information    
-    }
-
-    # Run all E2E tests.
-    Set-OpenSSHTestEnvironment -Confirm:$false
-    Invoke-OpenSSHE2ETest
-    if (($OpenSSHTestInfo -eq $null) -or (-not (Test-Path $OpenSSHTestInfo["E2ETestResultsFile"])))
-    {
-        Write-Warning "Test result file $OpenSSHTestInfo["E2ETestResultsFile"] not found after tests."
-        Write-BuildMessage -Message "Test result file $OpenSSHTestInfo["E2ETestResultsFile"] not found after tests." -Category Error
-        Set-BuildVariable TestPassed False
-        Write-Warning "Stop running further tests!"
-        return
-    }
-    $xml = [xml](Get-Content $OpenSSHTestInfo["E2ETestResultsFile"] | out-string)
-    if ([int]$xml.'test-results'.failures -gt 0) 
-    {
-        $errorMessage = "$($xml.'test-results'.failures) tests in regress\pesterTests failed. Detail test log is at $($OpenSSHTestInfo["E2ETestResultsFile"])."
-        Write-Warning $errorMessage
-        Write-BuildMessage -Message $errorMessage -Category Error
-        Set-BuildVariable TestPassed False
-        Write-Warning "Stop running further tests!"
-        return
-    }    
-
-    Invoke-OpenSSHUninstallTest
-    if (($OpenSSHTestInfo -eq $null) -or (-not (Test-Path $OpenSSHTestInfo["UninstallTestResultsFile"])))
-    {
-        Write-Warning "Test result file $OpenSSHTestInfo["UninstallTestResultsFile"] not found after tests."
-        Write-BuildMessage -Message "Test result file $OpenSSHTestInfo["UninstallTestResultsFile"] not found after tests." -Category Error
-        Set-BuildVariable TestPassed False
-    }
-    else {
-        $xml = [xml](Get-Content $OpenSSHTestInfo["UninstallTestResultsFile"] | out-string)
-        if ([int]$xml.'test-results'.failures -gt 0) 
-        {
-            $errorMessage = "$($xml.'test-results'.failures) uninstall tests in regress\pesterTests failed. Detail test log is at $($OpenSSHTestInfo["UninstallTestResultsFile"])."
-            Write-Warning $errorMessage
-            Write-BuildMessage -Message $errorMessage -Category Error
-            Set-BuildVariable TestPassed False
-        }
     }
 
     # Writing out warning when the $Error.Count is non-zero. Tests Should clean $Error after success.
@@ -375,40 +249,112 @@ function Invoke-OpenSSHTests
 }
 
 <#
+    .Synopsis
+    Get-UnitTestDirectory.
+#>
+function Get-UnitTestDirectory
+{
+    [CmdletBinding()]
+    param
+    (
+        [ValidateSet('Debug', 'Release')]
+        [string]$Configuration = "Release"
+    )
+
+    [string] $NativeHostArch = $env:PROCESSOR_ARCHITECTURE
+    if($NativeHostArch -eq 'x86')
+    {
+        $NativeHostArch = "Win32"
+    }
+    else
+    {
+        $NativeHostArch = "x64"
+    }
+    
+    $unitTestdir = (Resolve-Path "$psscriptroot\..\..\..\bin\$NativeHostArch\$Configuration").Path
+    $unitTestDir
+}
+
+function Invoke-OpenSSHUnitTests
+{
+    $bindir = Get-UnitTestDirectory
+    if(-not $env:path.tolower().startswith($bindir.tolower())){
+        $env:path = "$bindir;$env:path"
+    }
+    
+    Push-Location $bindir
+    Write-BuildMessage -Message "Running OpenSSH unit tests..." -Category Information
+    if (Test-Path $Script:UnitTestResult)
+    {
+        Remove-Item -Path $Script:UnitTestResult -Force -ErrorAction SilentlyContinue | Out-Null
+    }
+    $testFolders = Get-ChildItem -filter unittest-*.exe -Recurse |
+                 ForEach-Object{ Split-Path $_.FullName} |
+                 Sort-Object -Unique
+
+    if ($testFolders -ne $null)
+    {
+        $testFolders | % {
+            $unittestFile = "$(Split-Path $_ -Leaf).exe"
+            $unittestFilePath = join-path $_ $unittestFile
+            if(Test-Path $unittestFilePath -pathtype leaf)
+            {                
+                $pinfo = New-Object System.Diagnostics.ProcessStartInfo
+                $pinfo.FileName = "$unittestFilePath"
+                $pinfo.RedirectStandardError = $true
+                $pinfo.RedirectStandardOutput = $true
+                $pinfo.UseShellExecute = $false
+                $pinfo.WorkingDirectory = "$_"
+                $p = New-Object System.Diagnostics.Process
+                $p.StartInfo = $pinfo
+                $p.Start() | Out-Null
+                $stdout = $p.StandardOutput.ReadToEnd()
+                $stderr = $p.StandardError.ReadToEnd()
+                $p.WaitForExit()
+                $errorCode = $p.ExitCode
+                Write-Host "Running unit test: $unittestFile ..."
+                if(-not [String]::IsNullOrWhiteSpace($stdout))
+                {
+                    Add-Content $Script:UnitTestResult $stdout -Force -ErrorAction Ignore
+                }
+                if(-not [String]::IsNullOrWhiteSpace($stderr))
+                {
+                    Add-Content $Script:UnitTestResult $stderr -Force -ErrorAction Ignore
+                }
+                if ($errorCode -ne 0)
+                {
+                    $errorMessage = "$unittestFile failed.`nExitCode: $errorCode."
+                    Write-BuildMessage -Message $errorMessage -Category Error
+                    Write-Host $errorMessage
+                    Set-BuildVariable TestPassed False                   
+                }
+                else
+                {
+                    Write-Host "$unittestFile passed!"
+                }
+            }
+        }
+    }
+    Pop-Location
+}
+
+<#
       .Synopsis
       upload OpenSSH pester test results.
 #>
 function Publish-OpenSSHTestResults
-{ 
+{
+	Write-BuildMessage -Message "Publishing OpenSSHTestResults" -Category Information
     if ($env:APPVEYOR_JOB_ID)
     {
-        $setupresultFile = Resolve-Path $Global:OpenSSHTestInfo["SetupTestResultsFile"] -ErrorAction Ignore
-        if( (Test-Path $Global:OpenSSHTestInfo["SetupTestResultsFile"]) -and $setupresultFile)
-        {
-            (New-Object 'System.Net.WebClient').UploadFile("https://ci.appveyor.com/api/testresults/nunit/$($env:APPVEYOR_JOB_ID)", $setupresultFile)
-             Write-BuildMessage -Message "Setup test results uploaded!" -Category Information
-        }
-
-        $E2EresultFile = Resolve-Path $Global:OpenSSHTestInfo["E2ETestResultsFile"] -ErrorAction Ignore
-        if( (Test-Path $Global:OpenSSHTestInfo["E2ETestResultsFile"]) -and $E2EresultFile)
+        $E2EresultFile = Resolve-Path $Script:E2EResult -ErrorAction Ignore
+        if( (Test-Path $Script:E2EResult) -and $E2EresultFile)
         {
             (New-Object 'System.Net.WebClient').UploadFile("https://ci.appveyor.com/api/testresults/nunit/$($env:APPVEYOR_JOB_ID)", $E2EresultFile)
              Write-BuildMessage -Message "E2E test results uploaded!" -Category Information
         }
-
-        $uninstallResultFile = Resolve-Path $Global:OpenSSHTestInfo["UninstallTestResultsFile"] -ErrorAction Ignore
-        if( (Test-Path $Global:OpenSSHTestInfo["UninstallTestResultsFile"]) -and $uninstallResultFile)
-        {
-            (New-Object 'System.Net.WebClient').UploadFile("https://ci.appveyor.com/api/testresults/nunit/$($env:APPVEYOR_JOB_ID)", $uninstallResultFile)
-             Write-BuildMessage -Message "Uninstall test results uploaded!" -Category Information
-        }
     }
 
-    if ($env:DebugMode)
-    {
-        Remove-Item $env:DebugMode
-    }
-    
     if($env:TestPassed -ieq 'True')
     {
         Write-BuildMessage -Message "The checkin validation success!" -Category Information
