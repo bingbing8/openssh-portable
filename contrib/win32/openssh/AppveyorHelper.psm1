@@ -189,9 +189,9 @@ function Publish-Artifact
     Write-Host -ForegroundColor Yellow "Publishing project artifacts"
     [System.Collections.ArrayList] $artifacts = new-object System.Collections.ArrayList
     
-    # Get the build.log file for each build configuration        
-    Add-BuildLog -artifacts $artifacts -buildLog (Get-BuildLogFile -root $env:APPVEYOR_BUILD_FOLDER -Configuration Release -NativeHostArch x64)
-    Add-BuildLog -artifacts $artifacts -buildLog (Get-BuildLogFile -root $env:APPVEYOR_BUILD_FOLDER -Configuration Release -NativeHostArch x86)
+    # Get the build.log file for each build configuration
+    #Add-BuildLog -artifacts $artifacts -buildLog (Get-BuildLogFile -root $env:APPVEYOR_BUILD_FOLDER -Configuration Release -NativeHostArch x64)
+    #Add-BuildLog -artifacts $artifacts -buildLog (Get-BuildLogFile -root $env:APPVEYOR_BUILD_FOLDER -Configuration Release -NativeHostArch x86)
 
 
     Add-Artifact -artifacts $artifacts -FileToAdd $Script:E2EResult
@@ -213,7 +213,7 @@ function Invoke-OpenSSHTests
     if(-not (Test-Path $Script:TestResultsDir -PathType Container)) {
         New-Item $Script:TestResultsDir -ItemType Directory -Force -ErrorAction SilentlyContinue| Out-Null
     }
-    Invoke-OpenSSHUnitTests
+    #Invoke-OpenSSHUnitTests
     Invoke-OpenSSHE2ETests
 }
 
@@ -277,7 +277,7 @@ function Get-UnitTestDirectory
 
 function Invoke-OpenSSHUnitTests
 {
-    $bindir = Get-UnitTestDirectory
+    $bindir = Get-UnitTestDirectory -Configuration Debug
     if(-not $env:path.tolower().startswith($bindir.tolower())){
         $env:path = "$bindir;$env:path"
     }
