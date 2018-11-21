@@ -19,12 +19,12 @@ Describe "Tests for ssh config" -Tags "CI" {
     Context "$tC-User SSHConfig--ReadConfig" {
         BeforeAll {
             $systemSid = Get-UserSID -WellKnownSidType ([System.Security.Principal.WellKnownSidType]::LocalSystemSid)
-            $adminsSid = Get-UserSID -WellKnownSidType ([System.Security.Principal.WellKnownSidType]::BuiltinAdministratorsSid)                        
+            $adminsSid = Get-UserSID -WellKnownSidType ([System.Security.Principal.WellKnownSidType]::BuiltinAdministratorsSid)
             $currentUserSid = Get-UserSID -User "$($env:USERDOMAIN)\$($env:USERNAME)"
             $logfile = "$testDir\$suite.log"
             $userConfigFile = "$testDir\ssh_config"
             
-            Set-TestCommons -port $port -Server $server -ssh_config_file $userConfigFile
+            Set-TestCommons -port $port -Server $server -ssh_config_file $userConfigFile -E $logfile
             Write-Host (Get-Process -name sshd | Out-String)
             Enable-Privilege SeRestorePrivilege | out-null
             $oldACL = Get-ACL $userConfigFile

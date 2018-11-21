@@ -27,7 +27,7 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
             $sshdlog = "$testDir\$suite.log"
             $ssh_config_file = "$testDir\ssh_config"
             #other default vars: -TargetName "test_target" -user_key_type "ed25519" -user_key_file "$testDir\user_key_$user_key_type" -known_host_file "$testDir\known_hosts"
-            Set-TestCommons -port $port -Server $server -ssh_config_file $ssh_config_file
+            Set-TestCommons -port $port -Server $server -ssh_config_file $ssh_config_file -E $sshdlog
 
             $authorized_keys = $Script:Authorized_keys_file
 
@@ -53,7 +53,7 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
             $o = ssh  -F $ssh_config_file test_target echo 1234
             $o | Should Be "1234"
             Write-Host "finish $tC.$tI"
-            Write-Host Get-Process -name sshd
+            Write-Host (Get-Process -name sshd | Out-String)
         }
 
         It "$tC.$tI-authorized_keys-positive(authorized_keys is owned by admins group and pwd does not have explict ACE)" {
@@ -63,6 +63,7 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
             $o = ssh  -F $ssh_config_file test_target echo 1234
             $o | Should Be "1234"
             Write-Host "finish $tC.$tI"
+            Write-Host (Get-Process -name sshd | Out-String)
         }
 
         It "$tC.$tI-authorized_keys-positive(authorized_keys is owned by admins group and pwd have explict ACE)" {
@@ -72,6 +73,7 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
             $o = ssh  -F $ssh_config_file test_target echo 1234
             $o | Should Be "1234"
             Write-Host "finish $tC.$tI"
+            Write-Host (Get-Process -name sshd | Out-String)
         }
 
         It "$tC.$tI-authorized_keys-positive(pwd user is the owner)" {
@@ -81,6 +83,7 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
             $o = ssh -F $ssh_config_file test_target echo 1234
             $o | Should Be "1234"
             Write-Host "finish $tC.$tI"
+            Write-Host (Get-Process -name sshd | Out-String)
         }
 
         <#It "$tC.$tI-authorized_keys-negative(authorized_keys is owned by other admin user)"{
@@ -91,13 +94,13 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
             Start-SSHDTestDaemon -WorkDir $opensshbinpath -Arguments "-d -p $port -o `"AuthorizedKeysFile .testssh/authorized_keys`" -E $sshdlog"
             ssh -p $port -E $sshlog -o "UserKnownHostsFile $testknownhosts" $ssouser@$server echo 1234
             $LASTEXITCODE | Should Not Be 0
-            Stop-SSHDTestDaemon                  
+            Stop-SSHDTestDaemon
             $sshlog | Should -FileContentMatch "Permission denied"
             $sshdlog | Should -FileContentMatch "Authentication refused."
         }
 
         It "$tC.$tI-authorized_keys-negative(other account can access private key file)"{
-            #setup to have current user as owner and grant it full control            
+            #setup to have current user as owner and grant it full control
             Repair-FilePermission -Filepath $authorizedkeyPath -Owner $objUserSid -FullAccessNeeded $adminsSid,$systemSid,$objUserSid -confirm:$false
 
             #add $PwdUser to access the file authorized_keys
@@ -114,7 +117,7 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
         }
 
         It "$tC.$tI-authorized_keys-negative(authorized_keys is owned by other non-admin user)"{
-            #setup to have PwdUser as owner and grant it full control            
+            #setup to have PwdUser as owner and grant it full control
             $objPwdUserSid = Get-UserSid -User $PwdUser
             Repair-FilePermission -Filepath $authorizedkeyPath -Owner $objPwdUserSid -FullAccessNeeded $adminsSid,$systemSid,$objPwdUser -confirm:$false
 
@@ -124,7 +127,7 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
             $LASTEXITCODE | Should Not Be 0
             Stop-SSHDTestDaemon
             $sshlog | Should Contain "Permission denied"
-            $sshdlog | Should Contain "Authentication refused."            
+            $sshdlog | Should Contain "Authentication refused."
         }#>
     }
 }
