@@ -27,7 +27,7 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
             $sshdlog = "$testDir\$suite.log"
             $ssh_config_file = "$testDir\ssh_config"
             #other default vars: -TargetName "test_target" -user_key_type "ed25519" -user_key_file "$testDir\user_key_$user_key_type" -known_host_file "$testDir\known_hosts"
-            Set-TestCommons -port $port -Server $server -ssh_config_file $ssh_config_file
+            Set-TestCommons -port $port -Server $server -ssh_config_file $ssh_config_file -SSHD_Log_File $sshdlog
 
             $authorized_keys = $Script:Authorized_keys_file
 
@@ -51,7 +51,7 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
 			Write-Host (Get-Process -name sshd | Out-String)
             #setup to have system as owner and grant it full control
             Repair-FilePermission -Filepath $authorized_keys -Owner $systemSid -FullAccessNeeded  $adminsSid,$systemSid,$currentUserSid -confirm:$false
-            Restart-SSHDDaemon
+            ##Restart-SSHDDaemon
             $o = ssh  -F $ssh_config_file test_target echo 1234
             $o | Should Be "1234"
             Write-Host "finish $tC.$tI"
@@ -65,7 +65,7 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
 			Write-Host (Get-Process -name sshd | Out-String)
             #setup to have admin group as owner and grant it full control
             Repair-FilePermission -Filepath $authorized_keys -Owner $adminsSid -FullAccessNeeded $adminsSid,$systemSid -confirm:$false
-            Restart-SSHDDaemon
+            #Restart-SSHDDaemon
             $o = ssh  -F $ssh_config_file test_target echo 1234
             $o | Should Be "1234"
             Write-Host "finish $tC.$tI"
@@ -79,7 +79,7 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
 			Write-Host (Get-Process -name sshd | Out-String)
             #setup to have admin group as owner and grant it full control
             Repair-FilePermission -Filepath $authorized_keys -Owner $adminsSid -FullAccessNeeded $adminsSid,$systemSid,$currentUserSid -confirm:$false
-            Restart-SSHDDaemon
+            #Restart-SSHDDaemon
             $o = ssh  -F $ssh_config_file test_target echo 1234
             $o | Should Be "1234"
             Write-Host "finish $tC.$tI"
@@ -93,7 +93,7 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
 			Write-Host (Get-Process -name sshd | Out-String)
             #setup to have ssouser as owner and grant current user read and write, admins group, and local system full control
             Repair-FilePermission -Filepath $authorized_keys -Owners $currentUserSid -FullAccessNeeded  $adminsSid,$systemSid,$currentUserSid -confirm:$false
-            Restart-SSHDDaemon
+            #Restart-SSHDDaemon
             $o = ssh -F $ssh_config_file test_target echo 1234
             $o | Should Be "1234"
             Write-Host "finish $tC.$tI"
