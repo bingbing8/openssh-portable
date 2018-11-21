@@ -36,10 +36,6 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
             $tI=1
         }
 
-        AfterEach{
-            Start-Sleep -Milliseconds 1000
-        }
-
         AfterAll {
             Clear-TestCommons
             Remove-PasswordSetting
@@ -51,7 +47,7 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
 			Write-Host (Get-Process -name sshd | Out-String)
             #setup to have system as owner and grant it full control
             Repair-FilePermission -Filepath $authorized_keys -Owner $systemSid -FullAccessNeeded  $adminsSid,$systemSid,$currentUserSid -confirm:$false
-            ##Restart-SSHDDaemon
+            #Restart-SSHDDaemon
             $o = ssh  -F $ssh_config_file test_target echo 1234
             $o | Should Be "1234"
             Write-Host "finish $tC.$tI"

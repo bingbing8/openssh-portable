@@ -139,7 +139,7 @@ function Set-TestCommons
         }
         if($SSHD_Log_File)
         {
-            $params.Add("SSHD_Log_File", $logPath);
+            $params.Add("SSHD_Log_File", $SSHD_Log_File);
         }
         Start-SSHDDaemon @params
 
