@@ -65,7 +65,7 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
             $o | Should Be "1234"
         }
 
-        It "$tC.$tI-authorized_keys-positive(pwd user is the owner)" 
+        It "$tC.$tI-authorized_keys-positive(pwd user is the owner)" {
             #setup to have ssouser as owner and grant current user read and write, admins group, and local system full control
             Repair-FilePermission -Filepath $authorized_keys -Owners $currentUserSid -FullAccessNeeded  $adminsSid,$systemSid,$currentUserSid -confirm:$false
             #Restart-SSHDDaemon
