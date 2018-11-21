@@ -79,7 +79,7 @@ function Invoke-AppVeyorFull
     {
         $env:APPVEYOR_SCHEDULED_BUILD = 'True'
     }
-    try {        
+    try {
         Invoke-AppVeyorBuild
         Install-OpenSSH
         Invoke-OpenSSHTests
@@ -149,13 +149,14 @@ function Install-Pester
     if (-not ($isModuleAvailable))
     {
         Write-BuildMessage -Message "Installing Pester..." -Category Information
-        choco install Pester -y --force --limitoutput 2>&1 >> $env:temp\pesterInstallLog.txt
+        choco install Pester -y --force 
+        Get-Module pester -ListAvailable -ErrorAction Ignore
     }
 }
 
 <#
     .Synopsis
-    Publishes package build artifacts.    
+    Publishes package build artifacts.
     .Parameter artifacts
     An array list to add the fully qualified build log path
     .Parameter FileToAdd
@@ -173,7 +174,7 @@ function Add-Artifact
     if ([string]::IsNullOrEmpty($FileToAdd) -or (-not (Test-Path $FileToAdd -PathType Leaf)) )
     {            
         Write-Host "Skip publishing package artifacts. $FileToAdd does not exist"
-    }    
+    }
     else
     {
         $null = $artifacts.Add($FileToAdd)
@@ -188,15 +189,14 @@ function Publish-Artifact
 {
     Write-Host -ForegroundColor Yellow "Publishing project artifacts"
     [System.Collections.ArrayList] $artifacts = new-object System.Collections.ArrayList
-    
+
     # Get the build.log file for each build configuration        
     Add-BuildLog -artifacts $artifacts -buildLog (Get-BuildLogFile -root $env:APPVEYOR_BUILD_FOLDER -Configuration Release -NativeHostArch x64)
     Add-BuildLog -artifacts $artifacts -buildLog (Get-BuildLogFile -root $env:APPVEYOR_BUILD_FOLDER -Configuration Release -NativeHostArch x86)
 
-
     Add-Artifact -artifacts $artifacts -FileToAdd $Script:E2EResult
     Add-Artifact -artifacts $artifacts -FileToAdd $Script:UnitTestResult
-    
+
     foreach ($artifact in $artifacts)
     {
         Write-Host "Publishing $artifact as Appveyor artifact"
@@ -223,12 +223,13 @@ function Invoke-OpenSSHTests
 #>
 function Invoke-OpenSSHE2ETests
 {
-	Import-Module pester -force -global
+    Get-Module pester -ListAvailable -ErrorAction Ignore
+    Import-Module pester -force -global
     Write-BuildMessage -Message "Running OpenSSH tests..." -Category Information
     Push-Location "$env:APPVEYOR_BUILD_FOLDER\regress\pesterTests"
     #only ssh tests for now
     $testFolders = @(Get-ChildItem *.tests.ps1 -Recurse | ForEach-Object{ Split-Path $_.FullName} | Sort-Object -Unique)
-    
+
     Invoke-Pester $testFolders -OutputFormat NUnitXml -OutputFile $Script:E2EResult -Tag 'CI' -PassThru
     Pop-Location
 
@@ -281,7 +282,7 @@ function Invoke-OpenSSHUnitTests
     if(-not $env:path.tolower().startswith($bindir.tolower())){
         $env:path = "$bindir;$env:path"
     }
-    
+
     Push-Location $bindir
     Write-BuildMessage -Message "Running OpenSSH unit tests..." -Category Information
     if (Test-Path $Script:UnitTestResult)
