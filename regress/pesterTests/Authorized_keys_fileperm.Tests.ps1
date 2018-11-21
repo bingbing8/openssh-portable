@@ -37,7 +37,7 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
 				$num = 0
 				do {
 					$pr = @(Get-Process -name sshd)
-					$pr | Out-String
+					write-host ($pr | out-string)
 					Start-Sleep -Milliseconds 200
 				} while (($pr.count -gt 1) -and ($num++ -lt 7))
 			}

@@ -44,7 +44,7 @@ function Restart-SSHDDaemon
             return
         }
         if(($existingProcesses = Get-Process -name sshd -ErrorAction SilentlyContinue)){
-            $existingProcesses | Stop-Process
+            $existingProcesses | Stop-Process -ErrorAction SilentlyContinue -force
         }
         Start-process -FilePath "$($Script:SSHBinaryPath)\sshd.exe" -ArgumentList $Script:ArgumentList -NoNewWindow
 
@@ -92,7 +92,7 @@ function Start-SSHDDaemon
         }
         Write-SSHDConfig @params
         if(($existingProcesses = Get-Process -name sshd -ErrorAction SilentlyContinue)){
-            $existingProcesses | Stop-Process
+            $existingProcesses | Stop-Process -ErrorAction SilentlyContinue -Force
         }
         if($SSHD_Log_File)
         {
@@ -154,7 +154,7 @@ function Set-TestCommons
 function Stop-SSHDDaemon
 {
     if(($sshdprocess = get-process -name sshd -ErrorAction SilentlyContinue)) {
-        $sshdprocess | Stop-Process -ErrorAction SilentlyContinue
+        $sshdprocess | Stop-Process -ErrorAction SilentlyContinue -force
     }
 }
 
