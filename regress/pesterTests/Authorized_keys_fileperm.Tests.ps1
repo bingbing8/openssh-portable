@@ -54,6 +54,7 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
 			ReadSSHDInfo
             #setup to have system as owner and grant it full control
             Repair-FilePermission -Filepath $authorized_keys -Owner $systemSid -FullAccessNeeded  $adminsSid,$systemSid,$currentUserSid -confirm:$false
+			Start-Sleep -Milliseconds 400
             #Restart-SSHDDaemon
             $o = ssh  -F $ssh_config_file test_target echo 1234
             $o | Should Be "1234"
@@ -66,6 +67,7 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
 			ReadSSHDInfo
             #setup to have admin group as owner and grant it full control
             Repair-FilePermission -Filepath $authorized_keys -Owner $adminsSid -FullAccessNeeded $adminsSid,$systemSid -confirm:$false
+			Start-Sleep -Milliseconds 400
             #Restart-SSHDDaemon
             $o = ssh  -F $ssh_config_file test_target echo 1234
             $o | Should Be "1234"
@@ -78,6 +80,7 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
 			ReadSSHDInfo
             #setup to have admin group as owner and grant it full control
             Repair-FilePermission -Filepath $authorized_keys -Owner $adminsSid -FullAccessNeeded $adminsSid,$systemSid,$currentUserSid -confirm:$false
+			Start-Sleep -Milliseconds 400
             #Restart-SSHDDaemon
             $o = ssh  -F $ssh_config_file test_target echo 1234
             $o | Should Be "1234"
@@ -90,6 +93,7 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
 			ReadSSHDInfo
             #setup to have ssouser as owner and grant current user read and write, admins group, and local system full control
             Repair-FilePermission -Filepath $authorized_keys -Owners $currentUserSid -FullAccessNeeded  $adminsSid,$systemSid,$currentUserSid -confirm:$false
+			Start-Sleep -Milliseconds 400
             #Restart-SSHDDaemon
             $o = ssh -F $ssh_config_file test_target echo 1234
             $o | Should Be "1234"
