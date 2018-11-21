@@ -13,32 +13,26 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
         $server = "localhost"
 
         #$PwdUser = $OpenSSHTestInfo["PasswdUser"]
-        #$ssouserProfile = $OpenSSHTestInfo["SSOUserProfile"]        
+        #$ssouserProfile = $OpenSSHTestInfo["SSOUserProfile"]
         Remove-Item -Path (Join-Path $testDir "*$sshLogName") -Force -ErrorAction SilentlyContinue
     }
 
     AfterEach { $tI++ }
 
     Context "Authorized key file permission" {
-        BeforeAll {            
+        BeforeAll {
             $systemSid = Get-UserSID -WellKnownSidType ([System.Security.Principal.WellKnownSidType]::LocalSystemSid)
             $adminsSid = Get-UserSID -WellKnownSidType ([System.Security.Principal.WellKnownSidType]::BuiltinAdministratorsSid)
             $currentUserSid = Get-UserSID -User "$($env:USERDOMAIN)\$($env:USERNAME)"
-            
+            $sshdlog = "$testDir\$suite.log"
             $ssh_config_file = "$testDir\ssh_config"
-        
             #other default vars: -TargetName "test_target" -user_key_type "ed25519" -user_key_file "$testDir\user_key_$user_key_type" -known_host_file "$testDir\known_hosts"
-            Set-TestCommons -port $port -Server $server -ssh_config_file $ssh_config_file
-
+            Set-TestCommons -port $port -Server $server -ssh_config_file $ssh_config_file -SSHD_Log_File $sshdlog
             $authorized_keys = $Script:Authorized_keys_file
-                        
+
             #add wrong password so ssh does not prompt password if failed with authorized keys
             Add-PasswordSetting -Pass "WrongPass"
             $tI=1
-        }
-
-        AfterEach{
-            Start-Sleep -Milliseconds 1000
         }
 
         AfterAll {
@@ -47,16 +41,18 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
             $tC++
         }
 
-        <#It "$tC.$tI-authorized_keys-positive(authorized_keys is owned by local system)"{
+        It "$tC.$tI-authorized_keys-positive(authorized_keys is owned by local system)"{
             #setup to have system as owner and grant it full control
             Repair-FilePermission -Filepath $authorized_keys -Owner $systemSid -FullAccessNeeded  $adminsSid,$systemSid,$currentUserSid -confirm:$false
+            #Restart-SSHDDaemon
             $o = ssh  -F $ssh_config_file test_target echo 1234
             $o | Should Be "1234"
-        }#>
+        }
 
         It "$tC.$tI-authorized_keys-positive(authorized_keys is owned by admins group and pwd does not have explict ACE)" {
             #setup to have admin group as owner and grant it full control
             Repair-FilePermission -Filepath $authorized_keys -Owner $adminsSid -FullAccessNeeded $adminsSid,$systemSid -confirm:$false
+            #Restart-SSHDDaemon
             $o = ssh  -F $ssh_config_file test_target echo 1234
             $o | Should Be "1234"
         }
@@ -64,13 +60,15 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
         It "$tC.$tI-authorized_keys-positive(authorized_keys is owned by admins group and pwd have explict ACE)" {
             #setup to have admin group as owner and grant it full control
             Repair-FilePermission -Filepath $authorized_keys -Owner $adminsSid -FullAccessNeeded $adminsSid,$systemSid,$currentUserSid -confirm:$false
+            #Restart-SSHDDaemon
             $o = ssh  -F $ssh_config_file test_target echo 1234
             $o | Should Be "1234"
         }
 
-        It "$tC.$tI-authorized_keys-positive(pwd user is the owner)" {
+        It "$tC.$tI-authorized_keys-positive(pwd user is the owner)" 
             #setup to have ssouser as owner and grant current user read and write, admins group, and local system full control
             Repair-FilePermission -Filepath $authorized_keys -Owners $currentUserSid -FullAccessNeeded  $adminsSid,$systemSid,$currentUserSid -confirm:$false
+            #Restart-SSHDDaemon
             $o = ssh -F $ssh_config_file test_target echo 1234
             $o | Should Be "1234"
         }
@@ -83,13 +81,13 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
             Start-SSHDTestDaemon -WorkDir $opensshbinpath -Arguments "-d -p $port -o `"AuthorizedKeysFile .testssh/authorized_keys`" -E $sshdlog"
             ssh -p $port -E $sshlog -o "UserKnownHostsFile $testknownhosts" $ssouser@$server echo 1234
             $LASTEXITCODE | Should Not Be 0
-            Stop-SSHDTestDaemon                  
+            Stop-SSHDTestDaemon
             $sshlog | Should -FileContentMatch "Permission denied"
-            $sshdlog | Should -FileContentMatch "Authentication refused."            
+            $sshdlog | Should -FileContentMatch "Authentication refused."
         }
 
         It "$tC.$tI-authorized_keys-negative(other account can access private key file)"{
-            #setup to have current user as owner and grant it full control            
+            #setup to have current user as owner and grant it full control
             Repair-FilePermission -Filepath $authorizedkeyPath -Owner $objUserSid -FullAccessNeeded $adminsSid,$systemSid,$objUserSid -confirm:$false
 
             #add $PwdUser to access the file authorized_keys
@@ -99,14 +97,14 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
             #Run
             Start-SSHDTestDaemon -workDir $opensshbinpath -Arguments "-d -p $port -o `"AuthorizedKeysFile .testssh/authorized_keys`" -E $sshdlog"
             ssh -p $port -E $sshlog -o "UserKnownHostsFile $testknownhosts" $ssouser@$server echo 1234
-            $LASTEXITCODE | Should Not Be 0            
+            $LASTEXITCODE | Should Not Be 0
             Stop-SSHDTestDaemon
             $sshlog | Should Contain "Permission denied"
             $sshdlog | Should Contain "Authentication refused."
         }
 
         It "$tC.$tI-authorized_keys-negative(authorized_keys is owned by other non-admin user)"{
-            #setup to have PwdUser as owner and grant it full control            
+            #setup to have PwdUser as owner and grant it full control
             $objPwdUserSid = Get-UserSid -User $PwdUser
             Repair-FilePermission -Filepath $authorizedkeyPath -Owner $objPwdUserSid -FullAccessNeeded $adminsSid,$systemSid,$objPwdUser -confirm:$false
 
@@ -116,7 +114,7 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
             $LASTEXITCODE | Should Not Be 0
             Stop-SSHDTestDaemon
             $sshlog | Should Contain "Permission denied"
-            $sshdlog | Should Contain "Authentication refused."            
+            $sshdlog | Should Contain "Authentication refused."
         }#>
     }
 }

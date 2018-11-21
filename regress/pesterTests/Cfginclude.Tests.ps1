@@ -5,12 +5,12 @@ $suite = "Cfginclude"
 $testDir = "$env:temp\$suite"
 . $PSScriptRoot\common.ps1 -suite $suite -TestDir $testDir
 Import-Module "$Script:SSHBinaryPath\OpenSSHUtils" -force
-Describe "Tests for ssh config" -Tags "Scenario" {
+Describe "Tests for ssh config" -Tags "CI" {
     BeforeAll {
         $port = 47002
         $logName = "log.txt"
-        $server = "localhost"        
-        
+        $server = "localhost"
+
         Remove-Item -Path (Join-Path $testDir "*logName") -Force -ErrorAction SilentlyContinue
     }
 
@@ -19,18 +19,18 @@ Describe "Tests for ssh config" -Tags "Scenario" {
     Context "$tC-User SSHConfig--ReadConfig" {
         BeforeAll {
             $systemSid = Get-UserSID -WellKnownSidType ([System.Security.Principal.WellKnownSidType]::LocalSystemSid)
-            $adminsSid = Get-UserSID -WellKnownSidType ([System.Security.Principal.WellKnownSidType]::BuiltinAdministratorsSid)                        
+            $adminsSid = Get-UserSID -WellKnownSidType ([System.Security.Principal.WellKnownSidType]::BuiltinAdministratorsSid)
             $currentUserSid = Get-UserSID -User "$($env:USERDOMAIN)\$($env:USERNAME)"
-
+            $sshdlog = "$testDir\$suite.log"
             $userConfigFile = "$testDir\ssh_config"
-            
-            Set-TestCommons -port $port -Server $server -ssh_config_file $userConfigFile
+
+            Set-TestCommons -port $port -Server $server -ssh_config_file $userConfigFile -SSHD_Log_File $sshdlog
             Enable-Privilege SeRestorePrivilege | out-null
             $oldACL = Get-ACL $userConfigFile
             $tI=1
 
             function Set-FilePermission
-            {    
+            {
                 param(
                     [parameter(Mandatory=$true)]
                     [string]$FilePath,
@@ -40,7 +40,7 @@ Describe "Tests for ssh config" -Tags "Scenario" {
                     [System.Security.AccessControl.AccessControlType] $AccessType = "Allow",
                     [ValidateSet("Add", "Delete")]
                     [string]$Action = "Add"
-                )    
+                )
 
                 $myACL = Get-ACL $FilePath
                 $account = Get-UserAccount -UserSid $UserSid
@@ -50,9 +50,9 @@ Describe "Tests for ssh config" -Tags "Scenario" {
                     Enable-Privilege SeRestorePrivilege | out-null
                     Set-Acl -Path $FilePath -AclObject $myACL
                     $myACL = Get-ACL $FilePath
-        
-                    if($myACL.Access) 
-                    {        
+
+                    if($myACL.Access)
+                    {
                         $myACL.Access | % {
                             if($_.IdentityReference.Equals($account))
                             {
@@ -63,7 +63,7 @@ Describe "Tests for ssh config" -Tags "Scenario" {
                                     Set-Acl -Path $FilePath -AclObject $myACL
                                     $myACL = Get-ACL $FilePath
                                 }
-                    
+
                                 if(-not ($myACL.RemoveAccessRule($_)))
                                 {
                                     throw "failed to remove access of $($_.IdentityReference) rule in setup "
@@ -89,18 +89,18 @@ Describe "Tests for ssh config" -Tags "Scenario" {
             $logPath = Join-Path $testDir "$tC.$tI.$logName"
         }
 
-        AfterEach {            
+        AfterEach {
             Set-Acl -Path $userConfigFile -AclObject $oldACL -confirm:$false
         }
 
         AfterAll {
+            Clear-TestCommons
             $tC++
         }
         
         It "$tC.$tI-User SSHConfig-ReadConfig positive (current logon user is the owner)" {
             #setup
             Repair-FilePermission -Filepath $userConfigFile -Owners $currentUserSid -FullAccessNeeded $adminsSid,$systemSid,$currentUserSid -confirm:$false
-
             #Run
             $o = ssh -F $userConfigFile test_target echo 1234
             $o | Should Be "1234"
@@ -109,7 +109,6 @@ Describe "Tests for ssh config" -Tags "Scenario" {
         It "$tC.$tI-User SSHConfig-ReadConfig positive (local system is the owner)" {
             #setup
             Repair-FilePermission -Filepath $userConfigFile -Owners $systemSid -FullAccessNeeded $adminsSid,$systemSid -confirm:$false
-
             #Run
             $o = ssh -F $userConfigFile test_target echo 1234
             $o | Should Be "1234"
@@ -119,7 +118,6 @@ Describe "Tests for ssh config" -Tags "Scenario" {
             #setup
             Repair-FilePermission -Filepath $userConfigFile -Owners $adminsSid -FullAccessNeeded $adminsSid,$systemSid -confirm:$false
             Set-FilePermission -Filepath $userConfigFile -UserSid $currentUserSid -Action Delete
-
             #Run
             $o = ssh -F $userConfigFile test_target echo 1234
             $o | Should Be "1234"
@@ -128,7 +126,6 @@ Describe "Tests for ssh config" -Tags "Scenario" {
         It "$tC.$tI-User SSHConfig-ReadConfig positive (admin is the owner and current user has explict ACE)" {
             #setup
             Repair-FilePermission -Filepath $userConfigFile -Owners $adminsSid -FullAccessNeeded $adminsSid,$systemSid,$currentUserSid -confirm:$false
-            
             #Run
             $o = ssh -F $userConfigFile test_target echo 1234
             $o | Should Be "1234"

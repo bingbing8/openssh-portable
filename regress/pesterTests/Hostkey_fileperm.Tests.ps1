@@ -81,11 +81,11 @@ Describe "Tests for host keys file permission" -Tags "CI" {
             $currentUserSid = Get-UserSID -User "$($env:USERDOMAIN)\$($env:USERNAME)"
             $everyoneSid = Get-UserSID -WellKnownSidType ([System.Security.Principal.WellKnownSidType]::WorldSid)
 
-            $hostKeyFilePath = join-path $testDir hostkeyFilePermTest_ed25519_key	
+            $hostKeyFilePath = join-path $testDir hostkeyFilePermTest_ed25519_key
             if(Test-path $hostKeyFilePath -PathType Leaf) {	
-                Repair-SshdHostKeyPermission -filepath $hostKeyFilePath -confirm:$false	
+                Repair-SshdHostKeyPermission -filepath $hostKeyFilePath -confirm:$false
             }	
-            Remove-Item -path "$hostKeyFilePath*" -Force -ErrorAction SilentlyContinue	
+            Remove-Item -path "$hostKeyFilePath*" -Force -ErrorAction SilentlyContinue
             ssh-keygen.exe -t ed25519 -f $hostKeyFilePath -P `"`"
             
             $tI=1
@@ -116,30 +116,30 @@ Describe "Tests for host keys file permission" -Tags "CI" {
         AfterEach {
             if(Test-path $hostKeyFilePath -PathType Leaf) {
                 Repair-SshdHostKeyPermission -filepath $hostKeyFilePath -confirm:$false
-            }            
+            }
         }
         AfterAll { $tC++ }
 
-        It "$tC.$tI-Host keys-positive (both public and private keys are owned by admin groups)" {            
+        It "$tC.$tI-Host keys-positive (both public and private keys are owned by admin groups)" {
             Repair-FilePermission -Filepath $hostKeyFilePath -Owners $adminsSid -FullAccessNeeded $adminsSid,$systemSid -confirm:$false
             Repair-FilePermission -Filepath "$hostKeyFilePath.pub" -Owners $adminsSid -FullAccessNeeded $adminsSid,$systemSid -confirm:$false
 
             #Run
-            Start-SSHDDaemon -port $port -ExtraArglist "-d -E $logPath" -host_key_files $hostKeyFilePath
-            WaitForValidation -LogPath $logPath -Length 600            
+            Start-SSHDDaemon -port $port -ExtraArglist "-d" -host_key_files $hostKeyFilePath -SSHD_Log_File $logPath
+            WaitForValidation -LogPath $logPath -Length 600
 
             #validate file content does not contain unprotected info.
             $logPath | Should -Not -FileContentMatch "UNPROTECTED PRIVATE KEY FILE!"
             
         }
 
-        It "$tC.$tI-Host keys-positive (both public and private keys are owned by admin groups and pwd user has explicit ACE)" {            
+        It "$tC.$tI-Host keys-positive (both public and private keys are owned by admin groups and pwd user has explicit ACE)" {
             Repair-FilePermission -Filepath $hostKeyFilePath -Owners $adminsSid -FullAccessNeeded $adminsSid,$systemSid -ReadAccessNeeded $currentUserSid -confirm:$false
             Repair-FilePermission -Filepath "$hostKeyFilePath.pub" -Owners $adminsSid -FullAccessNeeded $adminsSid,$systemSid -ReadAccessNeeded $everyOneSid -confirm:$false
 
             #Run
-            Start-SSHDDaemon -port $port -ExtraArglist "-d -E $logPath" -host_key_files $hostKeyFilePath
-            WaitForValidation -LogPath $logPath -Length 600         
+            Start-SSHDDaemon -port $port -ExtraArglist "-d" -host_key_files $hostKeyFilePath -SSHD_Log_File $logPath
+            WaitForValidation -LogPath $logPath -Length 600
 
             #validate file content does not contain unprotected info.
             $logPath | Should -Not -FileContentMatch "UNPROTECTED PRIVATE KEY FILE!"
@@ -152,7 +152,7 @@ Describe "Tests for host keys file permission" -Tags "CI" {
             Set-FilePermission -Filepath "$hostKeyFilePath.pub" -UserSid $adminsSid -Action Delete
             
             #Run
-            Start-SSHDDaemon -port $port -ExtraArglist "-d -E $logPath" -host_key_files $hostKeyFilePath
+            Start-SSHDDaemon -port $port -ExtraArglist "-d" -host_key_files $hostKeyFilePath -SSHD_Log_File $logPath
             WaitForValidation -LogPath $logPath -Length 600
 
             #validate file content does not contain unprotected info.
@@ -164,11 +164,11 @@ Describe "Tests for host keys file permission" -Tags "CI" {
             Repair-FilePermission -Filepath "$hostKeyFilePath.pub" -Owners $adminsSid -FullAccessNeeded $systemSid,$adminsSid -ReadAccessNeeded $everyOneSid -confirm:$false
             
             #Run
-            Start-SSHDDaemon -port $port -ExtraArglist "-d -E $logPath" -host_key_files $hostKeyFilePath
+            Start-SSHDDaemon -port $port -ExtraArglist "-d" -host_key_files $hostKeyFilePath -SSHD_Log_File $logPath
             WaitForValidation -LogPath $logPath -Length 1100
 
             #validate file content contains unprotected info.
-            $logPath | Should -FileContentMatch "bad permissions"            
+            $logPath | Should -FileContentMatch "bad permissions"
         }
 
         It "$tC.$tI-Host keys-negative (the private key has wrong owner)" {
@@ -177,7 +177,7 @@ Describe "Tests for host keys file permission" -Tags "CI" {
             Repair-FilePermission -Filepath "$hostKeyFilePath.pub" -Owners $adminsSid -FullAccessNeeded $systemSid,$adminsSid -ReadAccessNeeded $everyOneSid -confirm:$false
 
             #Run
-            Start-SSHDDaemon -port $port -ExtraArglist "-d -E $logPath" -host_key_files $hostKeyFilePath
+            Start-SSHDDaemon -port $port -ExtraArglist "-d" -host_key_files $hostKeyFilePath -SSHD_Log_File $logPath
             WaitForValidation -LogPath $logPath -Length 1100
 
             #validate file content contains unprotected info.

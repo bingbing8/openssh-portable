@@ -6,6 +6,7 @@ $Script:TestDirectory = $TestDir
 $Script:TestSuite = $Suite
 $Script:Authorized_keys_file = $null
 $Script:Known_host_file = $null
+$Script:ArgumentList = $null
 
 function Find-OpenSSHBinPath
 {
@@ -37,12 +38,33 @@ function Find-OpenSSHBinPath
     $Script:SSHBinaryPath
 }
 
+function Restart-SSHDDaemon
+{
+        if($Script:ArgumentList -eq $null){
+            return
+        }
+        if(($existingProcesses = Get-Process -name sshd -ErrorAction SilentlyContinue)){
+            $existingProcesses | Stop-Process -ErrorAction SilentlyContinue -force
+        }
+        Start-process -FilePath "$($Script:SSHBinaryPath)\sshd.exe" -ArgumentList $Script:ArgumentList -NoNewWindow
+
+        #Sleep for 1 seconds for process to ready to listen
+        $num = 0
+        do
+        {
+            $newProcess = Get-Process -name sshd -ErrorAction SilentlyContinue
+            start-sleep 1
+            $num++
+            if($num -gt 30) { break }
+        } while ($newProcess -eq $null)
+}
 function Start-SSHDDaemon
 {
     param(
         [string]$port = 47002,
         [string[]]$host_key_files = $null,
         [string]$Authorized_Keys_File = $null,
+        [string]$SSHD_Log_File = $null,
         [string]$ExtraArglist="")
 
         if(!$host_key_files) {
@@ -58,19 +80,27 @@ function Start-SSHDDaemon
         }
 
         $sshd_config_path = "$Script:TestDirectory\sshd_config"
-        if(!$Authorized_Keys_File)
-        {
-            Write-SSHDConfig -Port $port -Host_Key_Files $host_key_files -SSHD_Config_Path $sshd_config_path
+        $params = @{
+            "Port" = $port;
+            "Host_Key_Files" = $host_key_files
+            "SSHD_Config_Path" = $sshd_config_path
         }
-        else
+        
+        if($Authorized_Keys_File)
         {
-            Write-SSHDConfig -Port $port -Host_Key_Files $host_key_files -Authorized_Keys_File $Authorized_Keys_File -SSHD_Config_Path $sshd_config_path
+            $params.Add("Authorized_Keys_File", $Authorized_Keys_File);
         }
+        Write-SSHDConfig @params
         if(($existingProcesses = Get-Process -name sshd -ErrorAction SilentlyContinue)){
-            $existingProcesses | Stop-Process
+            $existingProcesses | Stop-Process -ErrorAction SilentlyContinue -Force
         }
-        Start-process -FilePath "$($Script:SSHBinaryPath)\sshd.exe" -ArgumentList "-f `"$sshd_config_path`" $ExtraArglist" -NoNewWindow
-    
+        if($SSHD_Log_File)
+        {
+            $ExtraArglist += " -E $SSHD_Log_File"
+        }
+        $Script:ArgumentList = "-f `"$sshd_config_path`" $ExtraArglist"
+        Start-process -FilePath "$($Script:SSHBinaryPath)\sshd.exe" -ArgumentList $Script:ArgumentList -NoNewWindow
+
         #Sleep for 1 seconds for process to ready to listen
         $num = 0
         do
@@ -92,15 +122,26 @@ function Set-TestCommons
         [string]$user_key_file = "$Script:TestDirectory\user_key_$user_key_type",
         [string]$ssh_config_file = "$Script:TestDirectory\ssh_config",
         [string]$server = "localhost",
+        [string]$SSHD_Log_File = $null,
         [string]$ExtraArglist = "")
 
         if(-not (Test-Path $user_key_file -PathType Leaf)) {
             ssh-keygen.exe -t $user_key_type -P "`"`"" -f $user_key_file
-        }            
+        }
 
         $Script:Authorized_keys_file = "$Script:TestDirectory\Authorized_Keys"
         copy-item "$user_key_file.pub" $Script:Authorized_keys_file -force
-        Start-SSHDDaemon -host_key_files $host_key_files -Authorized_Keys_File $Script:Authorized_keys_file -port $port -ExtraArglist $ExtraArglist
+        $params = @{
+            "Port" = $port;
+            "host_key_files" = $host_key_files;
+            "Authorized_Keys_File" = $Script:Authorized_keys_file;
+            "ExtraArglist" = $ExtraArglist;
+        }
+        if($SSHD_Log_File)
+        {
+            $params.Add("SSHD_Log_File", $SSHD_Log_File);
+        }
+        Start-SSHDDaemon @params
 
         #generate known hosts
         $Script:Known_host_file = "$Script:TestDirectory\known_hosts"
@@ -113,7 +154,7 @@ function Set-TestCommons
 function Stop-SSHDDaemon
 {
     if(($sshdprocess = get-process -name sshd -ErrorAction SilentlyContinue)) {
-        $sshdprocess | Stop-Process -ErrorAction SilentlyContinue
+        $sshdprocess | Stop-Process -ErrorAction SilentlyContinue -force
     }
 }
 
@@ -147,7 +188,7 @@ function Write-SSHDConfig
         $Host_Key = $_.replace("\", "/")    
         "HostKey $Host_Key" | Add-Content $SSHD_Config_Path
     }
-    
+
     if($Authorized_Keys_File -and (Test-Path $Authorized_Keys_File)) {
         $Authorized_Keys = $Authorized_Keys_File.Replace("\", "/")
         "AuthorizedKeysFile $Authorized_Keys" | Add-Content $SSHD_Config_Path

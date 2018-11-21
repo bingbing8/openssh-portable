@@ -6,7 +6,7 @@ $testDir = "$env:temp\$suite"
 . $PSScriptRoot\common.ps1 -suite $suite -TestDir $testDir
 Import-Module "$Script:SSHBinaryPath\OpenSSHUtils" -force
 Describe "Tests for log file permission" -Tags "CI" {
-    BeforeAll {        
+    BeforeAll {
         $port = 47002
         $logName = "log.txt"
         $server = "localhost"
@@ -14,7 +14,7 @@ Describe "Tests for log file permission" -Tags "CI" {
         
         $systemSid = Get-UserSID -WellKnownSidType ([System.Security.Principal.WellKnownSidType]::LocalSystemSid)
         $adminsSid = Get-UserSID -WellKnownSidType ([System.Security.Principal.WellKnownSidType]::BuiltinAdministratorsSid)                        
-        $currentUserSid = Get-UserSID -User "$($env:USERDOMAIN)\$($env:USERNAME)"        
+        $currentUserSid = Get-UserSID -User "$($env:USERDOMAIN)\$($env:USERNAME)"
 
         Remove-Item (Join-Path $testDir "*$logName") -Force -ErrorAction SilentlyContinue
         #only validate owner and ACEs of the file
@@ -83,7 +83,7 @@ Describe "Tests for log file permission" -Tags "CI" {
         }
 
         It "$tC.$tI-SSHD -E Log file permission" {
-            Start-SSHDDaemon -port $port -ExtraArglist "-E $logPath"
+            Start-SSHDDaemon -port $port -SSHD_Log_File $logPath
             ValidateLogFilePerm -FilePath $logPath
         }
     }
