@@ -104,6 +104,7 @@ Describe "Tests for ssh config" -Tags "CI" {
             Write-Host "before $tC.$tI"
             Repair-FilePermission -Filepath $userConfigFile -Owners $currentUserSid -FullAccessNeeded $adminsSid,$systemSid,$currentUserSid -confirm:$false
             Start-Sleep -Milliseconds 200
+            Restart-SSHDDaemon
             #Run
             $o = ssh -F $userConfigFile test_target echo 1234
             $o | Should Be "1234"
@@ -114,9 +115,8 @@ Describe "Tests for ssh config" -Tags "CI" {
         It "$tC.$tI-User SSHConfig-ReadConfig positive (local system is the owner)" {
             #setup
             Write-Host "before $tC.$tI"
-			Start-Sleep -Milliseconds 200
             Repair-FilePermission -Filepath $userConfigFile -Owners $systemSid -FullAccessNeeded $adminsSid,$systemSid -confirm:$false
-
+            Restart-SSHDDaemon
             #Run
             $o = ssh -F $userConfigFile test_target echo 1234
             $o | Should Be "1234"
@@ -127,10 +127,9 @@ Describe "Tests for ssh config" -Tags "CI" {
         It "$tC.$tI-User SSHConfig-ReadConfig positive (admin is the owner and current user has no explict ACE)" {
             #setup
             Write-Host "before $tC.$tI"
-            Start-Sleep -Milliseconds 200
             Repair-FilePermission -Filepath $userConfigFile -Owners $adminsSid -FullAccessNeeded $adminsSid,$systemSid -confirm:$false
             Set-FilePermission -Filepath $userConfigFile -UserSid $currentUserSid -Action Delete
-
+            Restart-SSHDDaemon
             #Run
             $o = ssh -F $userConfigFile test_target echo 1234
             $o | Should Be "1234"
@@ -142,7 +141,7 @@ Describe "Tests for ssh config" -Tags "CI" {
             #setup
             Write-Host "before $tC.$tI"
             Repair-FilePermission -Filepath $userConfigFile -Owners $adminsSid -FullAccessNeeded $adminsSid,$systemSid,$currentUserSid -confirm:$false
-            Start-Sleep -Milliseconds 200
+            Restart-SSHDDaemon
             #Run
             $o = ssh -F $userConfigFile test_target echo 1234
             $o | Should Be "1234"

@@ -6,6 +6,7 @@ $Script:TestDirectory = $TestDir
 $Script:TestSuite = $Suite
 $Script:Authorized_keys_file = $null
 $Script:Known_host_file = $null
+$Script:ArgumentList = $null
 
 function Find-OpenSSHBinPath
 {
@@ -37,6 +38,23 @@ function Find-OpenSSHBinPath
     $Script:SSHBinaryPath
 }
 
+function Restart-SSHDDaemon
+{
+        if($Script:ArgumentList -eq $null){
+            return
+        }
+        Start-process -FilePath "$($Script:SSHBinaryPath)\sshd.exe" -ArgumentList $Script:ArgumentList -NoNewWindow
+
+        #Sleep for 1 seconds for process to ready to listen
+        $num = 0
+        do
+        {
+            $newProcess = Get-Process -name sshd -ErrorAction SilentlyContinue
+            start-sleep 1
+            $num++
+            if($num -gt 30) { break }
+        } while ($newProcess -eq $null)
+}
 function Start-SSHDDaemon
 {
     param(
@@ -77,7 +95,8 @@ function Start-SSHDDaemon
         {
             $ExtraArglist += " -E $SSHD_Log_File"
         }
-        Start-process -FilePath "$($Script:SSHBinaryPath)\sshd.exe" -ArgumentList "-f `"$sshd_config_path`" $ExtraArglist" -NoNewWindow
+        $Script:ArgumentList = "-f `"$sshd_config_path`" $ExtraArglist"
+        Start-process -FilePath "$($Script:SSHBinaryPath)\sshd.exe" -ArgumentList $Script:ArgumentList -NoNewWindow
 
         #Sleep for 1 seconds for process to ready to listen
         $num = 0
