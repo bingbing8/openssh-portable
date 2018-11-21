@@ -83,7 +83,7 @@ Describe "Tests for log file permission" -Tags "CI" {
         }
 
         It "$tC.$tI-SSHD -E Log file permission" {
-            Start-SSHDDaemon -port $port -ExtraArglist -SSHD_Log_File $logPath
+            Start-SSHDDaemon -port $port -SSHD_Log_File $logPath
             ValidateLogFilePerm -FilePath $logPath
         }
     }
