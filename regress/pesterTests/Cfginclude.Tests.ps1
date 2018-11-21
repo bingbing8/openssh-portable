@@ -24,7 +24,7 @@ Describe "Tests for ssh config" -Tags "CI" {
             $logfile = "$testDir\$suite.log"
             $userConfigFile = "$testDir\ssh_config"
             
-            Set-TestCommons -port $port -Server $server -ssh_config_file $userConfigFile -E $logfile
+            Set-TestCommons -port $port -Server $server -ssh_config_file $userConfigFile
             Write-Host (Get-Process -name sshd | Out-String)
             Enable-Privilege SeRestorePrivilege | out-null
             $oldACL = Get-ACL $userConfigFile

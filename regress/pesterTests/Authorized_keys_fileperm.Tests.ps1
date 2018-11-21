@@ -27,7 +27,7 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
             $sshdlog = "$testDir\$suite.log"
             $ssh_config_file = "$testDir\ssh_config"
             #other default vars: -TargetName "test_target" -user_key_type "ed25519" -user_key_file "$testDir\user_key_$user_key_type" -known_host_file "$testDir\known_hosts"
-            Set-TestCommons -port $port -Server $server -ssh_config_file $ssh_config_file -E $sshdlog
+            Set-TestCommons -port $port -Server $server -ssh_config_file $ssh_config_file
 
             $authorized_keys = $Script:Authorized_keys_file
 
