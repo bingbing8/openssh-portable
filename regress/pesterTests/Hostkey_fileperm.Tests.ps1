@@ -116,7 +116,7 @@ Describe "Tests for host keys file permission" -Tags "CI" {
         AfterEach {
             if(Test-path $hostKeyFilePath -PathType Leaf) {
                 Repair-SshdHostKeyPermission -filepath $hostKeyFilePath -confirm:$false
-            }            
+            }
         }
         AfterAll { $tC++ }
 
@@ -125,8 +125,8 @@ Describe "Tests for host keys file permission" -Tags "CI" {
             Repair-FilePermission -Filepath "$hostKeyFilePath.pub" -Owners $adminsSid -FullAccessNeeded $adminsSid,$systemSid -confirm:$false
 
             #Run
-            Start-SSHDDaemon -port $port -ExtraArglist "-d -E $logPath" -host_key_files $hostKeyFilePath
-            WaitForValidation -LogPath $logPath -Length 600            
+            Start-SSHDDaemon -port $port -ExtraArglist "-d" -host_key_files $hostKeyFilePath -SSHD_Log_File $logPath
+            WaitForValidation -LogPath $logPath -Length 600
 
             #validate file content does not contain unprotected info.
             $logPath | Should -Not -FileContentMatch "UNPROTECTED PRIVATE KEY FILE!"

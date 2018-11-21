@@ -43,6 +43,7 @@ function Start-SSHDDaemon
         [string]$port = 47002,
         [string[]]$host_key_files = $null,
         [string]$Authorized_Keys_File = $null,
+        [string]$SSHD_Log_File = $null,
         [string]$ExtraArglist="")
 
         if(!$host_key_files) {
@@ -58,19 +59,26 @@ function Start-SSHDDaemon
         }
 
         $sshd_config_path = "$Script:TestDirectory\sshd_config"
-        if(!$Authorized_Keys_File)
-        {
-            Write-SSHDConfig -Port $port -Host_Key_Files $host_key_files -SSHD_Config_Path $sshd_config_path
+        $params = @{
+            "Port" = $port;
+            "Host_Key_Files" = $host_key_files
+            "SSHD_Config_Path" = $sshd_config_path
         }
-        else
+        
+        if($Authorized_Keys_File)
         {
-            Write-SSHDConfig -Port $port -Host_Key_Files $host_key_files -Authorized_Keys_File $Authorized_Keys_File -SSHD_Config_Path $sshd_config_path
+            $params.Add("Authorized_Keys_File", $Authorized_Keys_File);
         }
+        Write-SSHDConfig @params
         if(($existingProcesses = Get-Process -name sshd -ErrorAction SilentlyContinue)){
             $existingProcesses | Stop-Process
         }
+        if($SSHD_Log_File)
+        {
+            $ExtraArglist += " -E $SSHD_Log_File"
+        }
         Start-process -FilePath "$($Script:SSHBinaryPath)\sshd.exe" -ArgumentList "-f `"$sshd_config_path`" $ExtraArglist" -NoNewWindow
-    
+
         #Sleep for 1 seconds for process to ready to listen
         $num = 0
         do
@@ -92,15 +100,26 @@ function Set-TestCommons
         [string]$user_key_file = "$Script:TestDirectory\user_key_$user_key_type",
         [string]$ssh_config_file = "$Script:TestDirectory\ssh_config",
         [string]$server = "localhost",
+        [string]$SSHD_Log_File = $null,
         [string]$ExtraArglist = "")
 
         if(-not (Test-Path $user_key_file -PathType Leaf)) {
             ssh-keygen.exe -t $user_key_type -P "`"`"" -f $user_key_file
-        }            
+        }
 
         $Script:Authorized_keys_file = "$Script:TestDirectory\Authorized_Keys"
         copy-item "$user_key_file.pub" $Script:Authorized_keys_file -force
-        Start-SSHDDaemon -host_key_files $host_key_files -Authorized_Keys_File $Script:Authorized_keys_file -port $port -ExtraArglist $ExtraArglist
+        $params = @{
+            "Port" = $port;
+            "host_key_files" = $host_key_files;
+            "Authorized_Keys_File" = $Script:Authorized_keys_file;
+            "ExtraArglist" = $ExtraArglist;
+        }
+        if($SSHD_Log_File)
+        {
+            $params.Add("SSHD_Log_File", $logPath);
+        }
+        Start-SSHDDaemon @params
 
         #generate known hosts
         $Script:Known_host_file = "$Script:TestDirectory\known_hosts"

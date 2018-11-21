@@ -768,7 +768,7 @@ w32_select(int fds, w32_fd_set* readfds, w32_fd_set* writefds, w32_fd_set* excep
 		return -1;
 	}
 
-	//debug5("Total in fds:%d", in_set_fds);
+	debug5("Total in fds:%d", in_set_fds);
 	/*
 	 * start async io on selected fds if needed and pick up any events
 	 * that select needs to listen on

@@ -247,7 +247,7 @@ syncio_initiate_write(struct w32_io* pio, DWORD num_bytes)
 int 
 syncio_close(struct w32_io* pio)
 {
-	//debug4("syncio_close - pio:%p", pio);
+	debug4("syncio_close - pio:%p", pio);
 	CancelIoEx(WINHANDLE(pio), NULL);
 
 	/* If io is pending, let worker threads exit. */
