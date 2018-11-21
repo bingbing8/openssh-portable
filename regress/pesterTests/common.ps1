@@ -43,6 +43,9 @@ function Restart-SSHDDaemon
         if($Script:ArgumentList -eq $null){
             return
         }
+        if(($existingProcesses = Get-Process -name sshd -ErrorAction SilentlyContinue)){
+            $existingProcesses | Stop-Process
+        }
         Start-process -FilePath "$($Script:SSHBinaryPath)\sshd.exe" -ArgumentList $Script:ArgumentList -NoNewWindow
 
         #Sleep for 1 seconds for process to ready to listen
