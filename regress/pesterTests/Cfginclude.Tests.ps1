@@ -21,17 +21,17 @@ Describe "Tests for ssh config" -Tags "CI" {
             $systemSid = Get-UserSID -WellKnownSidType ([System.Security.Principal.WellKnownSidType]::LocalSystemSid)
             $adminsSid = Get-UserSID -WellKnownSidType ([System.Security.Principal.WellKnownSidType]::BuiltinAdministratorsSid)                        
             $currentUserSid = Get-UserSID -User "$($env:USERDOMAIN)\$($env:USERNAME)"
-
+            $logfile = "$testDir\$suite.log"
             $userConfigFile = "$testDir\ssh_config"
             
-            Set-TestCommons -port $port -Server $server -ssh_config_file $userConfigFile
-			Write-Host (Get-Process -name sshd | Out-String)
+            Set-TestCommons -port $port -Server $server -ssh_config_file $userConfigFile -ExtraArglist "-E $logfile"
+            Write-Host (Get-Process -name sshd | Out-String)
             Enable-Privilege SeRestorePrivilege | out-null
             $oldACL = Get-ACL $userConfigFile
             $tI=1
 
             function Set-FilePermission
-            {    
+            {
                 param(
                     [parameter(Mandatory=$true)]
                     [string]$FilePath,
