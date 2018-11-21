@@ -102,51 +102,62 @@ Describe "Tests for ssh config" -Tags "CI" {
         It "$tC.$tI-User SSHConfig-ReadConfig positive (current logon user is the owner)" {
             #setup
             Write-Host "before $tC.$tI"
+			Write-Host (Get-Process -name sshd | Out-String)
             Repair-FilePermission -Filepath $userConfigFile -Owners $currentUserSid -FullAccessNeeded $adminsSid,$systemSid,$currentUserSid -confirm:$false
-            Start-Sleep -Milliseconds 200
-            Restart-SSHDDaemon
+            Start-Sleep -Milliseconds 400
             #Run
             $o = ssh -F $userConfigFile test_target echo 1234
             $o | Should Be "1234"
             Write-Host "finish $tC.$tI"
             Write-Host (Get-Process -name sshd | Out-String)
+			Start-Sleep -Milliseconds 200
+			Write-Host (Get-Process -name sshd | Out-String)
         }
 
         It "$tC.$tI-User SSHConfig-ReadConfig positive (local system is the owner)" {
             #setup
             Write-Host "before $tC.$tI"
+			Write-Host (Get-Process -name sshd | Out-String)
             Repair-FilePermission -Filepath $userConfigFile -Owners $systemSid -FullAccessNeeded $adminsSid,$systemSid -confirm:$false
-            Restart-SSHDDaemon
+            Start-Sleep -Milliseconds 400
             #Run
             $o = ssh -F $userConfigFile test_target echo 1234
             $o | Should Be "1234"
             Write-Host "finish $tC.$tI"
             Write-Host (Get-Process -name sshd | Out-String)
+			Start-Sleep -Milliseconds 200
+			Write-Host (Get-Process -name sshd | Out-String)
         }
 
         It "$tC.$tI-User SSHConfig-ReadConfig positive (admin is the owner and current user has no explict ACE)" {
             #setup
             Write-Host "before $tC.$tI"
+			Write-Host (Get-Process -name sshd | Out-String)
             Repair-FilePermission -Filepath $userConfigFile -Owners $adminsSid -FullAccessNeeded $adminsSid,$systemSid -confirm:$false
             Set-FilePermission -Filepath $userConfigFile -UserSid $currentUserSid -Action Delete
-            Restart-SSHDDaemon
+            Start-Sleep -Milliseconds 400
             #Run
             $o = ssh -F $userConfigFile test_target echo 1234
             $o | Should Be "1234"
             Write-Host "finish $tC.$tI"
             Write-Host (Get-Process -name sshd | Out-String)
+			Start-Sleep -Milliseconds 200
+			Write-Host (Get-Process -name sshd | Out-String)
         }
 
         It "$tC.$tI-User SSHConfig-ReadConfig positive (admin is the owner and current user has explict ACE)" {
             #setup
             Write-Host "before $tC.$tI"
+			Write-Host (Get-Process -name sshd | Out-String)
             Repair-FilePermission -Filepath $userConfigFile -Owners $adminsSid -FullAccessNeeded $adminsSid,$systemSid,$currentUserSid -confirm:$false
-            Restart-SSHDDaemon
+            Start-Sleep -Milliseconds 400
             #Run
             $o = ssh -F $userConfigFile test_target echo 1234
             $o | Should Be "1234"
             Write-Host "finish $tC.$tI"
             Write-Host (Get-Process -name sshd | Out-String)
+			Start-Sleep -Milliseconds 200
+			Write-Host (Get-Process -name sshd | Out-String)
         }
 
         <#It "$tC.$tI-User SSHConfig-ReadConfig negative (wrong owner)" {

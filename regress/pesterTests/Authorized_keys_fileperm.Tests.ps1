@@ -48,50 +48,58 @@ Describe "Tests for authorized_keys file permission" -Tags "CI" {
 
         It "$tC.$tI-authorized_keys-positive(authorized_keys is owned by local system)"{
             Write-Host "In $tC.$tI"
+			Write-Host (Get-Process -name sshd | Out-String)
             #setup to have system as owner and grant it full control
             Repair-FilePermission -Filepath $authorized_keys -Owner $systemSid -FullAccessNeeded  $adminsSid,$systemSid,$currentUserSid -confirm:$false
-            Start-Sleep -Milliseconds 200
             Restart-SSHDDaemon
             $o = ssh  -F $ssh_config_file test_target echo 1234
             $o | Should Be "1234"
             Write-Host "finish $tC.$tI"
             Write-Host (Get-Process -name sshd | Out-String)
+			Start-Sleep -Milliseconds 200
+			Write-Host (Get-Process -name sshd | Out-String)
         }
 
         It "$tC.$tI-authorized_keys-positive(authorized_keys is owned by admins group and pwd does not have explict ACE)" {
             Write-Host "In $tC.$tI"
+			Write-Host (Get-Process -name sshd | Out-String)
             #setup to have admin group as owner and grant it full control
             Repair-FilePermission -Filepath $authorized_keys -Owner $adminsSid -FullAccessNeeded $adminsSid,$systemSid -confirm:$false
-            Start-Sleep -Milliseconds 200
             Restart-SSHDDaemon
             $o = ssh  -F $ssh_config_file test_target echo 1234
             $o | Should Be "1234"
             Write-Host "finish $tC.$tI"
             Write-Host (Get-Process -name sshd | Out-String)
+			Start-Sleep -Milliseconds 200
+			Write-Host (Get-Process -name sshd | Out-String)
         }
 
         It "$tC.$tI-authorized_keys-positive(authorized_keys is owned by admins group and pwd have explict ACE)" {
             Write-Host "In $tC.$tI"
+			Write-Host (Get-Process -name sshd | Out-String)
             #setup to have admin group as owner and grant it full control
             Repair-FilePermission -Filepath $authorized_keys -Owner $adminsSid -FullAccessNeeded $adminsSid,$systemSid,$currentUserSid -confirm:$false
-            Start-Sleep -Milliseconds 200
             Restart-SSHDDaemon
             $o = ssh  -F $ssh_config_file test_target echo 1234
             $o | Should Be "1234"
             Write-Host "finish $tC.$tI"
             Write-Host (Get-Process -name sshd | Out-String)
+			Start-Sleep -Milliseconds 200
+			Write-Host (Get-Process -name sshd | Out-String)
         }
 
         It "$tC.$tI-authorized_keys-positive(pwd user is the owner)" {
             Write-Host "In $tC.$tI"
+			Write-Host (Get-Process -name sshd | Out-String)
             #setup to have ssouser as owner and grant current user read and write, admins group, and local system full control
             Repair-FilePermission -Filepath $authorized_keys -Owners $currentUserSid -FullAccessNeeded  $adminsSid,$systemSid,$currentUserSid -confirm:$false
             Restart-SSHDDaemon
-            Start-Sleep -Milliseconds 200
             $o = ssh -F $ssh_config_file test_target echo 1234
             $o | Should Be "1234"
             Write-Host "finish $tC.$tI"
             Write-Host (Get-Process -name sshd | Out-String)
+			Start-Sleep -Milliseconds 200
+			Write-Host (Get-Process -name sshd | Out-String)
         }
 
         <#It "$tC.$tI-authorized_keys-negative(authorized_keys is owned by other admin user)"{
